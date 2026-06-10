@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fo">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kappingarklárt</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">K</div>
+        <div>
+          <p class="eyebrow">Stoyt</p>
+          <h1>Kappingarklárt</h1>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-link active" data-view="dashboard">Yvirlit</button>
+        <button class="nav-link" data-view="templates">Templates</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <p class="sidebar-title">Version 1</p>
+        <p>Ein einfald útgáva til at royna layout, innihald og brúkarauppliving.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="dashboardView" class="view active-view">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Yvirlit</p>
+            <h2>Aktivar kappingar</h2>
+            <p class="page-description">Her sært tú tær kappingar, sum eru í gongd, og hvussu langt fyrireikingarnar eru komnar.</p>
+          </div>
+          <button id="openCreateCompetition" class="primary-btn">+ Nýggj kapping</button>
+        </header>
+
+        <div id="competitionGrid" class="competition-grid"></div>
+      </section>
+
+      <section id="templatesView" class="view">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Templates</p>
+            <h2>Bygg eina fasta checklist</h2>
+            <p class="page-description">Ger ein template, sum kann brúkast aftur hvørja ferð Stoyt skipar fyri kapping.</p>
+          </div>
+          <button id="createTemplateBtn" class="primary-btn">+ Nýggjur template</button>
+        </header>
+
+        <div class="template-layout">
+          <section class="panel">
+            <h3>Templates</h3>
+            <div id="templateList" class="list"></div>
+          </section>
+
+          <section id="templateEditor" class="panel editor-panel empty-panel">
+            <div class="empty-message">
+              <h3>Vel ein template</h3>
+              <p>Vel ein template til vinstru, ella stovna ein nýggjan.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="checklistView" class="view">
+        <header class="checklist-header">
+          <button id="backToDashboard" class="ghost-btn">← Aftur</button>
+
+          <div class="checklist-title-row">
+            <div>
+              <p class="eyebrow">Kapping</p>
+              <h2 id="checklistTitle">Kapping</h2>
+              <p id="checklistMeta" class="page-description"></p>
+            </div>
+
+            <div class="progress-card">
+              <span id="progressLabel">0% liðugt</span>
+              <div class="progress-track">
+                <div id="progressFill" class="progress-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-row">
+            <button class="filter-btn active" data-filter="all">Alt</button>
+            <button class="filter-btn" data-filter="todo">Ikki liðugt</button>
+            <button class="filter-btn" data-filter="before">Áðrenn</button>
+            <button class="filter-btn" data-filter="during">Undir</button>
+            <button class="filter-btn" data-filter="after">Eftir</button>
+          </div>
+        </header>
+
+        <div class="checklist-columns">
+          <section class="phase-column" data-phase="before">
+            <div class="phase-heading">
+              <span class="phase-dot before"></span>
+              <h3>Áðrenn kapping</h3>
+            </div>
+            <div id="beforeTasks" class="task-list"></div>
+          </section>
+
+          <section class="phase-column" data-phase="during">
+            <div class="phase-heading">
+              <span class="phase-dot during"></span>
+              <h3>Undir kapping</h3>
+            </div>
+            <div id="duringTasks" class="task-list"></div>
+          </section>
+
+          <section class="phase-column" data-phase="after">
+            <div class="phase-heading">
+              <span class="phase-dot after"></span>
+              <h3>Eftir kapping</h3>
+            </div>
+            <div id="afterTasks" class="task-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="createCompetitionModal" class="modal">
+    <form id="competitionForm" class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Nýggj kapping</p>
+          <h2>Stovna checklist</h2>
+        </div>
+        <button type="button" class="icon-btn" id="closeCompetitionModal">×</button>
+      </div>
+
+      <label>
+        Kappingarnavn
+        <input id="competitionName" type="text" placeholder="T.d. Skansi Cup 2026" required />
+      </label>
+
+      <label>
+        Dato
+        <input id="competitionDate" type="date" required />
+      </label>
+
+      <label>
+        Stað
+        <input id="competitionVenue" type="text" placeholder="T.d. Tvørmegi" />
+      </label>
+
+      <label>
+        Template
+        <select id="competitionTemplate"></select>
+      </label>
+
+      <label>
+        Atgongdarloyniorð
+        <input id="competitionPassword" type="text" placeholder="T.d. stoyt2026" />
+      </label>
+
+      <button class="primary-btn full-width" type="submit">Stovna kapping</button>
+    </form>
+  </dialog>
+
+  <template id="taskCardTemplate">
+    <article class="task-card">
+      <label class="task-check">
+        <input type="checkbox" />
+        <span></span>
+      </label>
+
+      <div class="task-content">
+        <h4></h4>
+        <div class="task-meta"></div>
+        <p class="task-note"></p>
+      </div>
+    </article>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
