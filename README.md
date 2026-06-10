@@ -1,23 +1,13 @@
-# Kappingarklárt v1
+# Kappingarklárt v3.4
 
-This is a simple HTML/CSS/JavaScript prototype for a Stoyt competition checklist website.
+Updates in this version:
 
-## What this first version includes
-
-- Dashboard with active competitions
-- Template builder
-- Create competition from template
-- Before / during / after competition checklist sections
-- Responsible person
-- Deadline
-- Notes
-- Done checkboxes
-- Progress bar
-- Responsive layout for computer and phone
-- Local browser saving with localStorage
-
-## How to open it
+- Desktop sidebar stays fixed/sticky and the main content scrolls independently
+- The sidebar now only contains Yvirlit and the collapse/expand button
+- Templates button moved to the Yvirlit header next to + Nýggj kapping
+- Competitions can be edited from Yvirlit
+- Competitions can be deleted from Yvirlit with confirmation
+- Templates can be deleted with confirmation
+- The last remaining template cannot be deleted
 
 Open `index.html` in your browser.
-
-No setup is required.

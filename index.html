@@ -3,88 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kappingarklárt</title>
+  <title>Kappingarklárt v3.4</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="appShell">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">K</div>
-        <div>
-          <p class="eyebrow">Stoyt</p>
-          <h1>Kappingarklárt</h1>
+      <div class="sidebar-top">
+        <div class="brand">
+          <div class="brand-mark">K</div>
+          <div class="brand-text"><p class="eyebrow">Stoyt</p><h1>Kappingarklárt</h1></div>
         </div>
       </div>
-
       <nav class="nav">
-        <button class="nav-link active" data-view="dashboard">Yvirlit</button>
-        <button class="nav-link" data-view="templates">Templates</button>
+        <button class="nav-link active" data-view="dashboard" title="Yvirlit"><span class="nav-icon">⌂</span><span class="nav-text">Yvirlit</span></button>
       </nav>
-
-      <div class="sidebar-card">
-        <p class="sidebar-title">Version 1</p>
-        <p>Ein einfald útgáva til at royna layout, innihald og brúkarauppliving.</p>
-      </div>
+      <div class="sidebar-card"><p class="sidebar-title">Version 3.4</p><p>Sticky menu, redigering av kappingum og betri template-stýring.</p></div>
+    
+        <button id="toggleSidebar" class="collapse-btn" title="Fold menu saman"><span class="when-open">←</span><span class="when-closed">→</span></button>
     </aside>
 
     <main class="main">
       <section id="dashboardView" class="view active-view">
         <header class="page-header">
-          <div>
-            <p class="eyebrow">Yvirlit</p>
-            <h2>Aktivar kappingar</h2>
-            <p class="page-description">Her sært tú tær kappingar, sum eru í gongd, og hvussu langt fyrireikingarnar eru komnar.</p>
-          </div>
-          <button id="openCreateCompetition" class="primary-btn">+ Nýggj kapping</button>
+          <div><p class="eyebrow">Yvirlit</p><h2>Aktivar kappingar</h2><p class="page-description">Skipað yvirlit yvir kappingar, uppgávur, ábyrgd og leiklutir á kappingardegi.</p></div>
+          <div class="header-actions"><button id="openTemplatesFromDashboard" class="secondary-btn">Templates</button><button id="openCreateCompetition" class="primary-btn">+ Nýggj kapping</button></div>
         </header>
-
         <div id="competitionGrid" class="competition-grid"></div>
       </section>
 
       <section id="templatesView" class="view">
         <header class="page-header">
-          <div>
-            <p class="eyebrow">Templates</p>
-            <h2>Bygg eina fasta checklist</h2>
-            <p class="page-description">Ger ein template, sum kann brúkast aftur hvørja ferð Stoyt skipar fyri kapping.</p>
-          </div>
+          <div><p class="eyebrow">Templates</p><h2>Bygg eina fasta checklist</h2><p class="page-description">Ger ein template, sum kann brúkast aftur hvørja ferð Stoyt skipar fyri kapping.</p></div>
           <button id="createTemplateBtn" class="primary-btn">+ Nýggjur template</button>
         </header>
-
         <div class="template-layout">
-          <section class="panel">
-            <h3>Templates</h3>
-            <div id="templateList" class="list"></div>
-          </section>
-
-          <section id="templateEditor" class="panel editor-panel empty-panel">
-            <div class="empty-message">
-              <h3>Vel ein template</h3>
-              <p>Vel ein template til vinstru, ella stovna ein nýggjan.</p>
-            </div>
-          </section>
+          <section class="panel"><h3>Templates</h3><div id="templateList" class="list"></div></section>
+          <section id="templateEditor" class="panel editor-panel empty-panel"><div class="empty-message"><h3>Vel ein template</h3><p>Vel ein template til vinstru, ella stovna ein nýggjan.</p></div></section>
         </div>
       </section>
 
       <section id="checklistView" class="view">
         <header class="checklist-header">
           <button id="backToDashboard" class="ghost-btn">← Aftur</button>
-
           <div class="checklist-title-row">
-            <div>
-              <p class="eyebrow">Kapping</p>
-              <h2 id="checklistTitle">Kapping</h2>
-              <p id="checklistMeta" class="page-description"></p>
-            </div>
-
-            <div class="progress-card">
-              <span id="progressLabel">0% liðugt</span>
-              <div class="progress-track">
-                <div id="progressFill" class="progress-fill"></div>
-              </div>
-            </div>
+            <div><p class="eyebrow">Kapping</p><h2 id="checklistTitle">Kapping</h2><p id="checklistMeta" class="page-description"></p></div>
+            <div class="progress-card"><span id="progressLabel">0% liðugt</span><div class="progress-track"><div id="progressFill" class="progress-fill"></div></div></div>
           </div>
+
+          <section class="roles-overview panel-soft">
+            <div class="roles-overview-top">
+              <div>
+                <p class="eyebrow">Kappingarleiklutur</p>
+                <h3>Leiklutur á kappingardegi</h3>
+              </div>
+              <button id="editRolesBtn" class="secondary-btn">Redigera leiklutir</button>
+            </div>
+            <div id="rolesSummary" class="roles-summary"></div>
+          </section>
 
           <div class="filter-row">
             <button class="filter-btn active" data-filter="all">Alt</button>
@@ -94,31 +70,10 @@
             <button class="filter-btn" data-filter="after">Eftir</button>
           </div>
         </header>
-
         <div class="checklist-columns">
-          <section class="phase-column" data-phase="before">
-            <div class="phase-heading">
-              <span class="phase-dot before"></span>
-              <h3>Áðrenn kapping</h3>
-            </div>
-            <div id="beforeTasks" class="task-list"></div>
-          </section>
-
-          <section class="phase-column" data-phase="during">
-            <div class="phase-heading">
-              <span class="phase-dot during"></span>
-              <h3>Undir kapping</h3>
-            </div>
-            <div id="duringTasks" class="task-list"></div>
-          </section>
-
-          <section class="phase-column" data-phase="after">
-            <div class="phase-heading">
-              <span class="phase-dot after"></span>
-              <h3>Eftir kapping</h3>
-            </div>
-            <div id="afterTasks" class="task-list"></div>
-          </section>
+          <section class="phase-column" data-phase="before"><div class="phase-heading"><span class="phase-dot before"></span><h3>Áðrenn kapping</h3></div><div id="beforeTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="before">+ Legg uppgávu afturat</button></section>
+          <section class="phase-column" data-phase="during"><div class="phase-heading"><span class="phase-dot during"></span><h3>Undir kapping</h3></div><div id="duringTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="during">+ Legg uppgávu afturat</button></section>
+          <section class="phase-column" data-phase="after"><div class="phase-heading"><span class="phase-dot after"></span><h3>Eftir kapping</h3></div><div id="afterTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="after">+ Legg uppgávu afturat</button></section>
         </div>
       </section>
     </main>
@@ -126,57 +81,59 @@
 
   <dialog id="createCompetitionModal" class="modal">
     <form id="competitionForm" class="modal-card">
-      <div class="modal-header">
-        <div>
-          <p class="eyebrow">Nýggj kapping</p>
-          <h2>Stovna checklist</h2>
-        </div>
-        <button type="button" class="icon-btn" id="closeCompetitionModal">×</button>
-      </div>
-
-      <label>
-        Kappingarnavn
-        <input id="competitionName" type="text" placeholder="T.d. Skansi Cup 2026" required />
-      </label>
-
-      <label>
-        Dato
-        <input id="competitionDate" type="date" required />
-      </label>
-
-      <label>
-        Stað
-        <input id="competitionVenue" type="text" placeholder="T.d. Tvørmegi" />
-      </label>
-
-      <label>
-        Template
-        <select id="competitionTemplate"></select>
-      </label>
-
-      <label>
-        Atgongdarloyniorð
-        <input id="competitionPassword" type="text" placeholder="T.d. stoyt2026" />
-      </label>
-
+      <div class="modal-header"><div><p class="eyebrow">Nýggj kapping</p><h2>Stovna checklist</h2></div><button type="button" class="icon-btn" id="closeCompetitionModal">×</button></div>
+      <div class="form-grid"><label>Kappingarnavn<input id="competitionName" type="text" placeholder="T.d. Skansi Cup 2026" required /></label><label>Dato<input id="competitionDate" type="date" required /></label></div>
+      <label>Stað<input id="competitionVenue" type="text" placeholder="T.d. Tvørmegi" /></label>
+      <label>Template<select id="competitionTemplate"></select></label>
+      <div class="people-box"><div><h3>Ábyrgdarpersónar til uppgávur</h3><p>Legg fólk afturat, sum kunnu veljast sum ábyrgdarpersónar á checklist-uppgávum. Hvør persónur fær sín egna lit.</p></div><div class="person-input-row"><input id="personNameInput" type="text" placeholder="Navn, t.d. Pól" /><button id="addPersonBtn" type="button" class="secondary-btn">Legg afturat</button></div><div id="personList" class="person-list"></div></div>
+      <label>Atgongdarloyniorð<input id="competitionPassword" type="text" placeholder="T.d. stoyt2026" /></label>
       <button class="primary-btn full-width" type="submit">Stovna kapping</button>
     </form>
   </dialog>
 
-  <template id="taskCardTemplate">
-    <article class="task-card">
-      <label class="task-check">
-        <input type="checkbox" />
-        <span></span>
-      </label>
 
-      <div class="task-content">
-        <h4></h4>
-        <div class="task-meta"></div>
-        <p class="task-note"></p>
+  <dialog id="editCompetitionModal" class="modal">
+    <form id="editCompetitionForm" class="modal-card">
+      <div class="modal-header"><div><p class="eyebrow">Kapping</p><h2>Redigera kapping</h2></div><button type="button" class="icon-btn" id="closeEditCompetitionModal">×</button></div>
+      <div class="form-grid"><label>Kappingarnavn<input id="editCompetitionName" type="text" placeholder="T.d. Skansi Cup 2026" required /></label><label>Dato<input id="editCompetitionDate" type="date" required /></label></div>
+      <label>Stað<input id="editCompetitionVenue" type="text" placeholder="T.d. Tvørmegi" /></label>
+      <div class="people-box"><div><h3>Ábyrgdarpersónar til uppgávur</h3><p>Broyt listan av fólkum, sum kunnu veljast sum ábyrgdarpersónar á checklist-uppgávum.</p></div><div class="person-input-row"><input id="editPersonNameInput" type="text" placeholder="Navn, t.d. Pól" /><button id="editAddPersonBtn" type="button" class="secondary-btn">Legg afturat</button></div><div id="editPersonList" class="person-list"></div></div>
+      <label>Atgongdarloyniorð<input id="editCompetitionPassword" type="text" placeholder="T.d. stoyt2026" /></label>
+      <button class="primary-btn full-width" type="submit">Goym broytingar</button>
+    </form>
+  </dialog>
+
+  <dialog id="taskEditModal" class="modal">
+    <form id="taskEditForm" class="modal-card">
+      <div class="modal-header"><div><p class="eyebrow">Uppgáva</p><h2>Redigera uppgávu</h2></div><button type="button" class="icon-btn" id="closeTaskEditModal">×</button></div>
+      <label>Heiti<input id="editTaskTitle" type="text" placeholder="T.d. Finna dómarar" required /></label>
+      <div class="responsible-editor">
+        <p class="field-label">Ábyrgd</p>
+        <div id="editTaskResponsibleList" class="responsible-check-list"></div>
       </div>
-    </article>
-  </template>
+      <label class="checkbox-row"><input id="editTaskHasDeadline" type="checkbox" /><span>Legg freist afturat</span></label>
+      <div id="deadlineFields" class="deadline-fields hidden"><label>Freist dato<input id="editTaskDeadlineDate" type="date" /></label><label>Klokkuslettur, valfrítt<input id="editTaskDeadlineTime" type="time" /></label></div>
+      <label>Viðmerking<textarea id="editTaskNote" rows="3" placeholder="T.d. hvør skal spyrjast, backup plan, ella hvat skal minnast til."></textarea></label>
+      <div class="modal-actions"><button id="deleteTaskBtn" type="button" class="danger-btn">Strika uppgávu</button><button class="primary-btn" type="submit">Goym broytingar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="rolesModal" class="modal modal-wide">
+    <form id="rolesForm" class="modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Leiklutur</p>
+          <h2>Redigera kappingarleiklutir</h2>
+          <p class="page-description">Skriva nøvnini á fólkunum í teigarnar. Tómir leiklutir verða ikki vístir á kappingarsíðuni.</p>
+        </div>
+        <button type="button" class="icon-btn" id="closeRolesModal">×</button>
+      </div>
+
+      <div id="rolesEditor" class="roles-editor"></div>
+
+      <button class="primary-btn full-width" type="submit">Goym leiklutir</button>
+    </form>
+  </dialog>
 
   <script src="script.js"></script>
 </body>
