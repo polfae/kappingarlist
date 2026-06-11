@@ -1158,3 +1158,134 @@ textarea:focus {
     max-width: none;
   }
 }
+
+
+/* v3.6 flexible sections and checklist simplification */
+.checklist-title-row {
+  align-items: flex-start;
+}
+
+.roles-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.people-icon-btn {
+  width: 2.45rem;
+  height: 2.45rem;
+  font-size: 1.02rem;
+}
+
+.roles-summary[hidden] {
+  display: none !important;
+}
+
+.responsible-filter-row {
+  display: none !important;
+}
+
+.responsible-pill-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.responsible-filter-pill {
+  border: 1px solid var(--person-color, var(--border));
+  background: var(--person-bg, #fff);
+  color: var(--person-text, var(--text));
+  border-radius: 999px;
+  padding: 0.55rem 0.78rem;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.responsible-filter-pill.active {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.26), 0 10px 20px rgba(23, 33, 31, 0.12);
+  transform: translateY(-1px);
+}
+
+.phase-heading {
+  display: block;
+}
+
+.phase-dot {
+  display: none !important;
+}
+
+.checklist-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.template-editor-actions {
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.template-section-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.template-grid-header-simple,
+.template-task-simple {
+  grid-template-columns: minmax(190px, 1fr) minmax(220px, 1.1fr) 44px !important;
+  min-width: 620px !important;
+}
+
+.delete-small[disabled],
+.danger-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.role-editor-heading {
+  align-items: center;
+}
+
+.role-editor-heading > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.role-add-btn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 1.2rem;
+  font-weight: 950;
+}
+
+.role-inputs:empty {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .checklist-columns {
+    grid-template-columns: 1fr !important;
+  }
+
+  .roles-actions {
+    justify-content: flex-start;
+  }
+
+  .responsible-pill-filter {
+    gap: 0.45rem;
+  }
+
+  .responsible-filter-pill {
+    padding: 0.5rem 0.7rem;
+  }
+}

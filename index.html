@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kappingarklárt v3.5</title>
+  <title>Kappingarklárt v3.6</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -27,7 +27,7 @@
       <nav class="nav">
         <button class="nav-link active" data-view="dashboard" title="Yvirlit"><span class="nav-icon">⌂</span><span class="nav-text">Yvirlit</span></button>
       </nav>
-      <p class="sidebar-version">Version 3.5</p>
+      <p class="sidebar-version">Version 3.6</p>
 <button id="toggleSidebar" class="collapse-btn" title="Fold menu saman"><span class="when-open">←</span><span class="when-closed">→</span></button>
     </aside>
 
@@ -56,7 +56,6 @@
           <button id="backToDashboard" class="ghost-btn">← Aftur</button>
           <div class="checklist-title-row">
             <div><p class="eyebrow">Kapping</p><h2 id="checklistTitle">Kapping</h2><p id="checklistMeta" class="page-description"></p></div>
-            <div class="progress-card"><span id="progressLabel">0% liðugt</span><div class="progress-track"><div id="progressFill" class="progress-fill"></div></div></div>
           </div>
 
           <section class="roles-overview panel-soft">
@@ -65,28 +64,18 @@
                 <p class="eyebrow">Kappingarleiklutur</p>
                 <h3>Leiklutur á kappingardegi</h3>
               </div>
-              <button id="editRolesBtn" class="secondary-btn">Redigera leiklutir</button>
+              <div class="roles-actions">
+                <button id="toggleRolesBtn" class="secondary-btn" type="button">Vís leiklutir</button>
+                <button id="editRolesBtn" class="icon-action-btn people-icon-btn" type="button" title="Redigera leiklutir" aria-label="Redigera leiklutir">👥</button>
+              </div>
             </div>
-            <div id="rolesSummary" class="roles-summary"></div>
+            <div id="rolesSummary" class="roles-summary" hidden></div>
           </section>
 
-          <div class="filter-row">
-            <button class="filter-btn active" data-filter="all">Alt</button>
-            <button class="filter-btn" data-filter="todo">Ikki liðugt</button>
-            <button class="filter-btn" data-filter="before">Áðrenn</button>
-            <button class="filter-btn" data-filter="during">Undir</button>
-            <button class="filter-btn" data-filter="after">Eftir</button>
-          </div>
-          <div class="responsible-filter-row">
-            <label for="responsibleFilter">Ábyrgdarpersónur</label>
-            <select id="responsibleFilter"></select>
-          </div>
+          <div id="sectionFilterRow" class="filter-row"></div>
+          <div id="responsibleFilterPills" class="responsible-pill-filter" aria-label="Filtrera eftir ábyrgdarpersóni"></div>
         </header>
-        <div class="checklist-columns">
-          <section class="phase-column" data-phase="before"><div class="phase-heading"><span class="phase-dot before"></span><h3>Áðrenn kapping</h3></div><div id="beforeTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="before">+ Legg uppgávu afturat</button></section>
-          <section class="phase-column" data-phase="during"><div class="phase-heading"><span class="phase-dot during"></span><h3>Undir kapping</h3></div><div id="duringTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="during">+ Legg uppgávu afturat</button></section>
-          <section class="phase-column" data-phase="after"><div class="phase-heading"><span class="phase-dot after"></span><h3>Eftir kapping</h3></div><div id="afterTasks" class="task-list"></div><button class="add-phase-task secondary-btn" data-phase="after">+ Legg uppgávu afturat</button></section>
-        </div>
+        <div id="checklistColumns" class="checklist-columns"></div>
       </section>
     </main>
   </div>

@@ -1,4 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v3.5";
+const STORAGE_KEY = "kappingarklart-v3.6";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -30,24 +31,36 @@ const defaultTemplates = [
   {
     id: "template-official",
     name: "Official kapping",
-    tasks: {
-      before: [
-        { title: "Vátta dato og høli", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Tryggja at hølið er tøkt og at dato ikki rakar aðrar kappingar." },
-        { title: "Finna dómarar", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Hav minst eina backup loysn." },
-        { title: "Gera startlista", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna vektbólkar, innvigan og bólkabýti." },
-        { title: "Kanna útgerð", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stong, skivur, lás, krít, klokku og teldu." }
-      ],
-      during: [
-        { title: "Gjøgnumføra innvigan", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Skráset kropsvekt og fyrstu royndir." },
-        { title: "Briefa hjálparfólk", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Dómarar, speakers, loaders og skriviborð vita sína uppgávu." },
-        { title: "Halda úrslit dagførd", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna at royndir og samanlagt eru rætt." }
-      ],
-      after: [
-        { title: "Goyma og senda úrslit", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Goym PDF/Excel og send til viðkomandi persónar." },
-        { title: "Rudda hølið", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Útgerð aftur á pláss, rusk burtur og hølið latið pent eftir." },
-        { title: "Takki hjálparfólki og stuðlum", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stutt boð ella postur á sosialum miðlum." }
-      ]
-    }
+    sections: [
+      {
+        id: "before",
+        title: "Áðrenn kapping",
+        tasks: [
+          { title: "Vátta dato og høli", note: "Tryggja at hølið er tøkt og at dato ikki rakar aðrar kappingar." },
+          { title: "Finna dómarar", note: "Hav minst eina backup loysn." },
+          { title: "Gera startlista", note: "Kanna vektbólkar, innvigan og bólkabýti." },
+          { title: "Kanna útgerð", note: "Stong, skivur, lás, krít, klokku og teldu." }
+        ]
+      },
+      {
+        id: "during",
+        title: "Undir kapping",
+        tasks: [
+          { title: "Gjøgnumføra innvigan", note: "Skráset kropsvekt og fyrstu royndir." },
+          { title: "Briefa hjálparfólk", note: "Dómarar, speakers, loaders og skriviborð vita sína uppgávu." },
+          { title: "Halda úrslit dagførd", note: "Kanna at royndir og samanlagt eru rætt." }
+        ]
+      },
+      {
+        id: "after",
+        title: "Eftir kapping",
+        tasks: [
+          { title: "Goyma og senda úrslit", note: "Goym PDF/Excel og send til viðkomandi persónar." },
+          { title: "Rudda hølið", note: "Útgerð aftur á pláss, rusk burtur og hølið latið pent eftir." },
+          { title: "Takki hjálparfólki og stuðlum", note: "Stutt boð ella postur á sosialum miðlum." }
+        ]
+      }
+    ]
   }
 ];
 
@@ -56,19 +69,20 @@ let activeView = "dashboard";
 let activeTemplateId = state.templates[0]?.id || null;
 let activeCompetitionId = null;
 let activeFilter = "all";
-let activeResponsibleFilter = "all";
+let activeResponsibleFilter = "";
 let mobileMenuOpen = false;
 let draftPeople = [];
 let editingTask = null;
 let editingCompetitionId = null;
 let editDraftPeople = [];
+let rolesVisible = false;
+let roleInputCounts = {};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 const appShell = $("#appShell");
 const navLinks = $$(".nav-link");
-const filterButtons = $$(".filter-btn");
 const views = {
   dashboard: $("#dashboardView"),
   templates: $("#templatesView"),
@@ -82,7 +96,7 @@ function makeId() {
 function makeEmptyRoles() {
   const roles = {};
   ROLE_DEFINITIONS.forEach(role => {
-    roles[role.key] = Array(role.max).fill("");
+    roles[role.key] = [];
   });
   return roles;
 }
@@ -93,34 +107,106 @@ function taskResponsibles(task) {
   return [];
 }
 
-function cloneTasks(tasks) {
-  const cloned = { before: [], during: [], after: [] };
+function migrateTasksObjectToSections(tasksObject) {
+  const sectionInfo = [
+    ["before", "Áðrenn kapping"],
+    ["during", "Undir kapping"],
+    ["after", "Eftir kapping"]
+  ];
 
-  ["before", "during", "after"].forEach(phase => {
-    cloned[phase] = (tasks[phase] || []).map(task => ({
-      id: makeId(),
-      phase,
+  return sectionInfo.map(([key, title]) => ({
+    id: key,
+    title,
+    tasks: (tasksObject?.[key] || []).map(task => ({
       title: task.title || "",
+      note: task.note || "",
       responsible: task.responsible || "",
       responsibles: taskResponsibles(task),
       hasDeadline: Boolean(task.hasDeadline && task.deadlineDate),
       deadlineDate: task.deadlineDate || "",
       deadlineTime: task.deadlineTime || "",
-      note: task.note || "",
-      done: false
-    }));
-  });
+      done: Boolean(task.done)
+    }))
+  }));
+}
 
-  return cloned;
+function normalizeTemplateSections(template) {
+  if (!Array.isArray(template.sections)) {
+    template.sections = migrateTasksObjectToSections(template.tasks);
+    delete template.tasks;
+  }
+
+  template.sections.forEach((section, index) => {
+    section.id ||= makeId();
+    section.title ||= `Sektion ${index + 1}`;
+    section.tasks ||= [];
+    section.tasks.forEach(task => {
+      task.title ||= "";
+      task.note ||= "";
+      delete task.responsible;
+      delete task.responsibles;
+      delete task.hasDeadline;
+      delete task.deadlineDate;
+      delete task.deadlineTime;
+      delete task.done;
+    });
+  });
+}
+
+function normalizeCompetitionSections(competition) {
+  if (!Array.isArray(competition.sections)) {
+    competition.sections = migrateTasksObjectToSections(competition.tasks);
+    delete competition.tasks;
+  }
+
+  competition.sections.forEach((section, index) => {
+    section.id ||= makeId();
+    section.title ||= `Sektion ${index + 1}`;
+    section.tasks ||= [];
+    section.tasks.forEach(task => {
+      task.id ||= makeId();
+      task.title ||= "";
+      task.note ||= "";
+      task.responsibles = taskResponsibles(task);
+      task.responsible = task.responsibles[0] || "";
+      task.hasDeadline = Boolean(task.hasDeadline && task.deadlineDate);
+      task.deadlineDate ||= "";
+      task.deadlineTime ||= "";
+      task.done = Boolean(task.done);
+    });
+  });
+}
+
+function cloneSections(sections) {
+  return (sections || []).map(section => ({
+    id: makeId(),
+    title: section.title || "Nýggj sektion",
+    tasks: (section.tasks || []).map(task => ({
+      id: makeId(),
+      title: task.title || "",
+      note: task.note || "",
+      responsible: "",
+      responsibles: [],
+      hasDeadline: false,
+      deadlineDate: "",
+      deadlineTime: "",
+      done: false
+    }))
+  }));
 }
 
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) return JSON.parse(saved);
 
+  for (const key of PREVIOUS_STORAGE_KEYS) {
+    const previous = localStorage.getItem(key);
+    if (previous) return JSON.parse(previous);
+  }
+
   return {
     sidebarCollapsed: false,
-    templates: defaultTemplates,
+    templates: structuredClone(defaultTemplates),
     competitions: [
       {
         id: makeId(),
@@ -131,10 +217,10 @@ function loadState() {
         people: ["Pól", "Jens", "Herborg", "Niels Áki"],
         roles: {
           ...makeEmptyRoles(),
-          competitionLeader: ["Pól", ""],
+          competitionLeader: ["Pól"],
           speaker: ["Herborg"]
         },
-        tasks: cloneTasks(defaultTemplates[0].tasks)
+        sections: cloneSections(defaultTemplates[0].sections)
       }
     ]
   };
@@ -149,20 +235,7 @@ function normalizeState() {
   state.templates ||= [];
   state.competitions ||= [];
 
-  state.templates.forEach(template => {
-    template.tasks ||= { before: [], during: [], after: [] };
-    ["before", "during", "after"].forEach(phase => {
-      template.tasks[phase] ||= [];
-      template.tasks[phase].forEach(task => {
-        task.responsible ||= "";
-        task.responsibles = taskResponsibles(task);
-        task.hasDeadline = Boolean(task.hasDeadline && task.deadlineDate);
-        task.deadlineDate ||= "";
-        task.deadlineTime ||= "";
-        task.note ||= "";
-      });
-    });
-  });
+  state.templates.forEach(normalizeTemplateSections);
 
   state.competitions.forEach(competition => {
     competition.people ||= [];
@@ -170,38 +243,17 @@ function normalizeState() {
 
     ROLE_DEFINITIONS.forEach(role => {
       if (!Array.isArray(competition.roles[role.key])) {
-        competition.roles[role.key] = Array(role.max).fill("");
+        competition.roles[role.key] = [];
       }
-      while (competition.roles[role.key].length < role.max) {
-        competition.roles[role.key].push("");
-      }
-      competition.roles[role.key] = competition.roles[role.key].slice(0, role.max);
+      competition.roles[role.key] = competition.roles[role.key].filter(name => String(name).trim()).slice(0, role.max);
     });
 
-    competition.tasks ||= { before: [], during: [], after: [] };
-    ["before", "during", "after"].forEach(phase => {
-      competition.tasks[phase] ||= [];
-      competition.tasks[phase].forEach(task => {
-        task.id ||= makeId();
-        task.phase ||= phase;
-        task.responsible ||= "";
-        task.responsibles = taskResponsibles(task);
-        task.hasDeadline = Boolean(task.hasDeadline && task.deadlineDate);
-        task.deadlineDate ||= "";
-        task.deadlineTime ||= "";
-        task.note ||= "";
-        task.done = Boolean(task.done);
-      });
-    });
+    normalizeCompetitionSections(competition);
   });
 }
 
 function getAllTasks(competition) {
-  return [
-    ...(competition.tasks.before || []),
-    ...(competition.tasks.during || []),
-    ...(competition.tasks.after || [])
-  ];
+  return (competition.sections || []).flatMap(section => section.tasks || []);
 }
 
 function getProgress(competition) {
@@ -285,7 +337,6 @@ function renderDashboard() {
 
   state.competitions.forEach(competition => {
     const progress = getProgress(competition);
-
     const card = document.createElement("article");
     card.className = "competition-card";
 
@@ -314,7 +365,9 @@ function renderDashboard() {
 
     const openCompetition = () => {
       activeCompetitionId = competition.id;
-      activeResponsibleFilter = "all";
+      activeResponsibleFilter = "";
+      activeFilter = "all";
+      rolesVisible = false;
       setView("checklist");
     };
 
@@ -382,17 +435,16 @@ function renderTemplateEditor() {
         Template navn
         <input id="templateNameInput" value="${escapeHTML(template.name)}" />
       </label>
-      <p class="page-description">Hetta er template-mode. Her byggir tú listan, men uppgávurnar verða fyrst merktar lidnar inni á sjálvari kappingini.</p>
+      <p class="page-description">Her byggir tú template-sektionir og uppgávur. Ábyrgd og freistir verða sett inni á sjálvari kappingini.</p>
     </div>
 
     <div class="template-editor-actions">
+      <button id="addTemplateSectionBtn" class="secondary-btn" type="button">+ Nýggj sektion</button>
       <button id="deleteTemplateBtn" class="danger-btn" type="button" ${state.templates.length <= 1 ? "disabled" : ""}>Strika template</button>
     </div>
 
     <div class="editor-grid">
-      ${renderTemplateSection("before", "Áðrenn kapping", template)}
-      ${renderTemplateSection("during", "Undir kapping", template)}
-      ${renderTemplateSection("after", "Eftir kapping", template)}
+      ${template.sections.map((section, sectionIndex) => renderTemplateSection(section, sectionIndex, template)).join("")}
     </div>
   `;
 
@@ -407,16 +459,29 @@ function renderTemplateEditor() {
     deleteTemplateWithConfirmation(template.id);
   });
 
+  $("#addTemplateSectionBtn")?.addEventListener("click", () => {
+    template.sections.push({
+      id: makeId(),
+      title: "Nýggj sektion",
+      tasks: []
+    });
+    saveState();
+    renderTemplateEditor();
+  });
+
+  templateEditor.querySelectorAll("[data-section-title]").forEach(input => {
+    input.addEventListener("input", () => {
+      const sectionIndex = Number(input.dataset.sectionTitle);
+      template.sections[sectionIndex].title = input.value;
+      saveState();
+    });
+  });
+
   templateEditor.querySelectorAll("[data-add-task]").forEach(button => {
     button.addEventListener("click", () => {
-      const phase = button.dataset.addTask;
-      template.tasks[phase].push({
+      const sectionIndex = Number(button.dataset.sectionIndex);
+      template.sections[sectionIndex].tasks.push({
         title: "Nýggj uppgáva",
-        responsible: "",
-        responsibles: [],
-        hasDeadline: false,
-        deadlineDate: "",
-        deadlineTime: "",
         note: ""
       });
       saveState();
@@ -424,52 +489,68 @@ function renderTemplateEditor() {
     });
   });
 
+  templateEditor.querySelectorAll("[data-delete-section]").forEach(button => {
+    button.addEventListener("click", () => {
+      const sectionIndex = Number(button.dataset.sectionIndex);
+      if (template.sections.length <= 1) {
+        window.alert("Ein template skal hava minst eina sektion.");
+        return;
+      }
+      const section = template.sections[sectionIndex];
+      const confirmed = window.confirm(`Vilt tú strika sektionina "${section.title}"?`);
+      if (!confirmed) return;
+      template.sections.splice(sectionIndex, 1);
+      saveState();
+      renderTemplateEditor();
+    });
+  });
+
   templateEditor.querySelectorAll("[data-task-field]").forEach(input => {
     input.addEventListener("input", () => {
-      const phase = input.dataset.phase;
-      const index = Number(input.dataset.index);
+      const sectionIndex = Number(input.dataset.sectionIndex);
+      const taskIndex = Number(input.dataset.taskIndex);
       const field = input.dataset.taskField;
-      template.tasks[phase][index][field] = input.value;
+      template.sections[sectionIndex].tasks[taskIndex][field] = input.value;
       saveState();
     });
   });
 
   templateEditor.querySelectorAll("[data-delete-task]").forEach(button => {
     button.addEventListener("click", () => {
-      const phase = button.dataset.phase;
-      const index = Number(button.dataset.index);
-      template.tasks[phase].splice(index, 1);
+      const sectionIndex = Number(button.dataset.sectionIndex);
+      const taskIndex = Number(button.dataset.taskIndex);
+      template.sections[sectionIndex].tasks.splice(taskIndex, 1);
       saveState();
       renderTemplateEditor();
     });
   });
 }
 
-function renderTemplateSection(phase, title, template) {
-  const tasks = template.tasks[phase];
-
+function renderTemplateSection(section, sectionIndex, template) {
   return `
     <section class="template-section">
-      <h3>${title}</h3>
+      <div class="template-section-header">
+        <label>
+          Sektion navn
+          <input data-section-title="${sectionIndex}" value="${escapeHTML(section.title)}" placeholder="T.d. Fyrireiking" />
+        </label>
+        <button class="delete-small" data-delete-section data-section-index="${sectionIndex}" type="button" title="Strika sektion" ${template.sections.length <= 1 ? "disabled" : ""}>×</button>
+      </div>
 
-      <div class="template-grid-header">
+      <div class="template-grid-header template-grid-header-simple">
         <span>Uppgáva</span>
-        <span>Ábyrgd / leiklutur</span>
-        <span>Freist</span>
         <span>Viðmerking</span>
         <span></span>
       </div>
 
-      ${tasks.map((task, index) => `
-        <div class="template-task">
-          <input data-task-field="title" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.title)}" placeholder="Navn á uppgávu" />
-          <input data-task-field="responsible" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.responsible || "")}" placeholder="Hvør er ábyrgdari?" />
-          <input data-task-field="deadlineDate" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.deadlineDate || "")}" placeholder="Freist, valfrítt" />
-          <input data-task-field="note" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.note || "")}" placeholder="Viðmerking" />
-          <button class="delete-small" data-delete-task data-phase="${phase}" data-index="${index}">×</button>
+      ${section.tasks.map((task, taskIndex) => `
+        <div class="template-task template-task-simple">
+          <input data-task-field="title" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.title)}" placeholder="Navn á uppgávu" />
+          <input data-task-field="note" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.note || "")}" placeholder="Viðmerking" />
+          <button class="delete-small" data-delete-task data-section-index="${sectionIndex}" data-task-index="${taskIndex}" type="button">×</button>
         </div>
       `).join("")}
-      <button class="secondary-btn" data-add-task="${phase}" type="button">+ Legg afturat</button>
+      <button class="secondary-btn" data-add-task data-section-index="${sectionIndex}" type="button">+ Legg uppgávu afturat</button>
     </section>
   `;
 }
@@ -507,7 +588,6 @@ function renderPeopleDraft() {
     personList.appendChild(pill);
   });
 }
-
 
 function renderEditPeopleDraft() {
   const personList = $("#editPersonList");
@@ -595,49 +675,22 @@ function renderChecklist() {
   $("#checklistMeta").textContent = `${formatDate(competition.date)} · ${competition.venue || "Einki stað ásett"} · Lykilorð: ${competition.password || "einki"}`;
 
   renderRolesSummary(competition);
+  renderSectionFilters(competition);
   renderResponsibleFilter(competition);
-
-  const progress = getProgress(competition);
-  $("#progressLabel").textContent = `${progress}% liðugt`;
-  $("#progressFill").style.width = `${progress}%`;
-
-  renderPhaseTasks("before", competition);
-  renderPhaseTasks("during", competition);
-  renderPhaseTasks("after", competition);
-
-  $$(".phase-column").forEach(column => {
-    const shouldShow =
-      activeFilter === "all" ||
-      activeFilter === "todo" ||
-      column.dataset.phase === activeFilter;
-
-    column.style.display = shouldShow ? "" : "none";
-  });
-}
-
-
-function renderResponsibleFilter(competition) {
-  const select = $("#responsibleFilter");
-  if (!select) return;
-
-  const previousValue = activeResponsibleFilter;
-  const people = competition.people || [];
-
-  select.innerHTML = `
-    <option value="all">Allir persónar</option>
-    ${people.map(person => `<option value="${escapeHTML(person)}">${escapeHTML(person)}</option>`).join("")}
-  `;
-
-  if (previousValue !== "all" && people.includes(previousValue)) {
-    select.value = previousValue;
-  } else {
-    activeResponsibleFilter = "all";
-    select.value = "all";
-  }
+  renderChecklistSections(competition);
 }
 
 function renderRolesSummary(competition) {
   const rolesSummary = $("#rolesSummary");
+  const toggleButton = $("#toggleRolesBtn");
+
+  rolesSummary.hidden = !rolesVisible;
+  toggleButton.textContent = rolesVisible ? "Fjal leiklutir" : "Vís leiklutir";
+
+  if (!rolesVisible) {
+    rolesSummary.innerHTML = "";
+    return;
+  }
 
   const filledRoles = ROLE_DEFINITIONS
     .map(role => ({
@@ -661,82 +714,158 @@ function renderRolesSummary(competition) {
   `).join("");
 }
 
-function renderPhaseTasks(phase, competition) {
-  const container = $(`#${phase}Tasks`);
-  container.innerHTML = "";
+function renderSectionFilters(competition) {
+  const container = $("#sectionFilterRow");
+  container.innerHTML = `
+    <button class="filter-btn ${activeFilter === "all" ? "active" : ""}" data-filter="all">Alt</button>
+    <button class="filter-btn ${activeFilter === "todo" ? "active" : ""}" data-filter="todo">Ikki liðugt</button>
+    ${competition.sections.map(section => `
+      <button class="filter-btn ${activeFilter === section.id ? "active" : ""}" data-filter="${section.id}">${escapeHTML(section.title)}</button>
+    `).join("")}
+  `;
 
-  const tasks = competition.tasks[phase].filter(task => {
-    const matchesStatus = activeFilter === "todo" ? !task.done : true;
-    const matchesResponsible =
-      activeResponsibleFilter === "all" ||
-      taskResponsibles(task).includes(activeResponsibleFilter);
-
-    return matchesStatus && matchesResponsible;
-  });
-
-  tasks.forEach(task => {
-    const responsiblePills = taskResponsibles(task)
-      .map(person => personPillHTML(competition, person))
-      .join("");
-
-    const card = document.createElement("article");
-    card.className = `task-card ${task.done ? "done" : ""}`;
-
-    card.innerHTML = `
-      <label class="task-check" title="Merk sum liðugt">
-        <input type="checkbox" ${task.done ? "checked" : ""} />
-      </label>
-
-      <div class="task-content">
-        <h4>${escapeHTML(task.title)}</h4>
-        <div class="task-meta">
-          
-          ${responsiblePills}
-          ${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : ""}
-        </div>
-        ${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : ""}
-      </div>
-
-      <div class="task-actions">
-        <button class="delete-task-btn" title="Strika uppgávu">×</button>
-      </div>
-    `;
-
-    card.addEventListener("click", () => {
-      openTaskEditor(competition.id, phase, task.id);
-    });
-
-    card.querySelector("input[type='checkbox']").addEventListener("click", event => {
-      event.stopPropagation();
-    });
-
-    card.querySelector("input[type='checkbox']").addEventListener("change", event => {
-      task.done = event.target.checked;
-      saveState();
-      renderDashboard();
+  container.querySelectorAll("[data-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFilter = button.dataset.filter;
       renderChecklist();
     });
-
-    card.querySelector(".delete-task-btn").addEventListener("click", event => {
-      event.stopPropagation();
-      deleteTaskWithConfirmation(competition.id, phase, task.id);
-    });
-
-    container.appendChild(card);
   });
 }
 
-function deleteTaskWithConfirmation(competitionId, phase, taskId) {
+function renderResponsibleFilter(competition) {
+  const container = $("#responsibleFilterPills");
+  const people = competition.people || [];
+
+  if (people.length === 0) {
+    container.innerHTML = "";
+    activeResponsibleFilter = "";
+    return;
+  }
+
+  container.innerHTML = people.map(person => `
+    <button
+      type="button"
+      class="responsible-filter-pill ${activeResponsibleFilter === person ? "active" : ""}"
+      style="${colorStyle(competition, person)}"
+      data-person="${escapeHTML(person)}"
+    >${escapeHTML(person)}</button>
+  `).join("");
+
+  container.querySelectorAll("[data-person]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeResponsibleFilter = activeResponsibleFilter === button.dataset.person ? "" : button.dataset.person;
+      renderChecklist();
+    });
+  });
+}
+
+function sectionMatchesFilter(section) {
+  return activeFilter === "all" || activeFilter === "todo" || activeFilter === section.id;
+}
+
+function taskMatchesFilters(task) {
+  const matchesStatus = activeFilter === "todo" ? !task.done : true;
+  const matchesResponsible =
+    !activeResponsibleFilter ||
+    taskResponsibles(task).includes(activeResponsibleFilter);
+
+  return matchesStatus && matchesResponsible;
+}
+
+function renderChecklistSections(competition) {
+  const container = $("#checklistColumns");
+  container.innerHTML = "";
+
+  competition.sections
+    .filter(sectionMatchesFilter)
+    .forEach(section => {
+      const sectionElement = document.createElement("section");
+      sectionElement.className = "phase-column";
+      sectionElement.dataset.sectionId = section.id;
+
+      sectionElement.innerHTML = `
+        <div class="phase-heading"><h3>${escapeHTML(section.title)}</h3></div>
+        <div class="task-list"></div>
+        <button class="add-phase-task secondary-btn" data-section-id="${section.id}" type="button">+ Legg uppgávu afturat</button>
+      `;
+
+      const taskList = sectionElement.querySelector(".task-list");
+      section.tasks.filter(taskMatchesFilters).forEach(task => {
+        taskList.appendChild(renderTaskCard(competition, section.id, task));
+      });
+
+      sectionElement.querySelector("[data-section-id]").addEventListener("click", () => {
+        addTaskToCompetition(section.id);
+      });
+
+      container.appendChild(sectionElement);
+    });
+}
+
+function renderTaskCard(competition, sectionId, task) {
+  const responsiblePills = taskResponsibles(task)
+    .map(person => personPillHTML(competition, person))
+    .join("");
+
+  const card = document.createElement("article");
+  card.className = `task-card ${task.done ? "done" : ""}`;
+
+  card.innerHTML = `
+    <label class="task-check" title="Merk sum liðugt">
+      <input type="checkbox" ${task.done ? "checked" : ""} />
+    </label>
+
+    <div class="task-content">
+      <h4>${escapeHTML(task.title)}</h4>
+      <div class="task-meta">
+        ${responsiblePills}
+        ${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : ""}
+      </div>
+      ${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : ""}
+    </div>
+
+    <div class="task-actions">
+      <button class="delete-task-btn" title="Strika uppgávu">×</button>
+    </div>
+  `;
+
+  card.addEventListener("click", () => {
+    openTaskEditor(competition.id, sectionId, task.id);
+  });
+
+  card.querySelector("input[type='checkbox']").addEventListener("click", event => {
+    event.stopPropagation();
+  });
+
+  card.querySelector("input[type='checkbox']").addEventListener("change", event => {
+    task.done = event.target.checked;
+    saveState();
+    renderDashboard();
+    renderChecklist();
+  });
+
+  card.querySelector(".delete-task-btn").addEventListener("click", event => {
+    event.stopPropagation();
+    deleteTaskWithConfirmation(competition.id, sectionId, task.id);
+  });
+
+  return card;
+}
+
+function deleteTaskWithConfirmation(competitionId, sectionId, taskId) {
   const competition = state.competitions.find(item => item.id === competitionId);
   if (!competition) return;
 
-  const task = competition.tasks[phase].find(item => item.id === taskId);
+  const section = competition.sections.find(item => item.id === sectionId);
+  if (!section) return;
+
+  const task = section.tasks.find(item => item.id === taskId);
   if (!task) return;
 
   const confirmed = window.confirm(`Vilt tú strika uppgávuna "${task.title}"?`);
   if (!confirmed) return;
 
-  competition.tasks[phase] = competition.tasks[phase].filter(item => item.id !== taskId);
+  section.tasks = section.tasks.filter(item => item.id !== taskId);
   saveState();
   renderDashboard();
   renderChecklist();
@@ -762,11 +891,12 @@ function renderResponsibleChoices(competition, task) {
   }).join("");
 }
 
-function openTaskEditor(competitionId, phase, taskId) {
+function openTaskEditor(competitionId, sectionId, taskId) {
   const competition = state.competitions.find(item => item.id === competitionId);
-  const task = competition.tasks[phase].find(item => item.id === taskId);
+  const section = competition.sections.find(item => item.id === sectionId);
+  const task = section.tasks.find(item => item.id === taskId);
 
-  editingTask = { competitionId, phase, taskId };
+  editingTask = { competitionId, sectionId, taskId };
 
   $("#editTaskTitle").value = task.title;
   $("#editTaskNote").value = task.note || "";
@@ -776,24 +906,26 @@ function openTaskEditor(competitionId, phase, taskId) {
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
 
   renderResponsibleChoices(competition, task);
-
   $("#taskEditModal").showModal();
 }
 
 function getEditingTask() {
   if (!editingTask) return null;
   const competition = state.competitions.find(item => item.id === editingTask.competitionId);
-  const task = competition.tasks[editingTask.phase].find(item => item.id === editingTask.taskId);
-  return { competition, task };
+  const section = competition.sections.find(item => item.id === editingTask.sectionId);
+  const task = section.tasks.find(item => item.id === editingTask.taskId);
+  return { competition, section, task };
 }
 
-function addTaskToCompetition(phase) {
+function addTaskToCompetition(sectionId) {
   const competition = state.competitions.find(item => item.id === activeCompetitionId);
   if (!competition) return;
 
+  const section = competition.sections.find(item => item.id === sectionId);
+  if (!section) return;
+
   const task = {
     id: makeId(),
-    phase,
     title: "Nýggj uppgáva",
     responsible: "",
     responsibles: [],
@@ -804,27 +936,47 @@ function addTaskToCompetition(phase) {
     done: false
   };
 
-  competition.tasks[phase].push(task);
+  section.tasks.push(task);
   saveState();
   renderChecklist();
-  openTaskEditor(competition.id, phase, task.id);
+  openTaskEditor(competition.id, section.id, task.id);
 }
 
 function openRolesEditor() {
   const competition = state.competitions.find(item => item.id === activeCompetitionId);
   if (!competition) return;
 
+  roleInputCounts = {};
+  ROLE_DEFINITIONS.forEach(role => {
+    const filled = (competition.roles[role.key] || []).filter(name => name.trim()).length;
+    roleInputCounts[role.key] = filled;
+  });
+
+  renderRolesEditor();
+  $("#rolesModal").showModal();
+}
+
+function renderRolesEditor() {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
   const rolesEditor = $("#rolesEditor");
   rolesEditor.innerHTML = ROLE_DEFINITIONS.map(role => {
-    const values = competition.roles[role.key] || Array(role.max).fill("");
+    const values = competition.roles[role.key] || [];
+    const visibleCount = Math.min(role.max, roleInputCounts[role.key] || 0);
+    const canAdd = visibleCount < role.max;
+
     return `
       <section class="role-editor-card">
         <div class="role-editor-heading">
-          <strong>${role.label}</strong>
-          <span>Max ${role.max}</span>
+          <div>
+            <strong>${role.label}</strong>
+            <span>Max ${role.max}</span>
+          </div>
+          ${canAdd ? `<button class="role-add-btn" type="button" data-add-role-field="${role.key}" title="Legg persón afturat">+</button>` : ""}
         </div>
         <div class="role-inputs">
-          ${Array.from({ length: role.max }).map((_, index) => `
+          ${Array.from({ length: visibleCount }).map((_, index) => `
             <input
               data-role-key="${role.key}"
               data-role-index="${index}"
@@ -837,7 +989,14 @@ function openRolesEditor() {
     `;
   }).join("");
 
-  $("#rolesModal").showModal();
+  rolesEditor.querySelectorAll("[data-add-role-field]").forEach(button => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.addRoleField;
+      const role = ROLE_DEFINITIONS.find(item => item.key === key);
+      roleInputCounts[key] = Math.min(role.max, (roleInputCounts[key] || 0) + 1);
+      renderRolesEditor();
+    });
+  });
 }
 
 function saveRolesFromEditor() {
@@ -845,15 +1004,22 @@ function saveRolesFromEditor() {
   if (!competition) return;
 
   ROLE_DEFINITIONS.forEach(role => {
-    competition.roles[role.key] = Array(role.max).fill("");
+    competition.roles[role.key] = [];
   });
 
   $("#rolesEditor").querySelectorAll("[data-role-key]").forEach(input => {
     const key = input.dataset.roleKey;
-    const index = Number(input.dataset.roleIndex);
-    competition.roles[key][index] = input.value.trim();
+    const value = input.value.trim();
+    if (value) {
+      competition.roles[key].push(value);
+    }
   });
 
+  ROLE_DEFINITIONS.forEach(role => {
+    competition.roles[role.key] = competition.roles[role.key].slice(0, role.max);
+  });
+
+  rolesVisible = true;
   saveState();
   renderChecklist();
 }
@@ -868,12 +1034,6 @@ $("#mobileMenuToggle")?.addEventListener("click", () => {
   mobileMenuOpen = !mobileMenuOpen;
   applySidebarState();
 });
-
-$("#responsibleFilter")?.addEventListener("change", event => {
-  activeResponsibleFilter = event.target.value;
-  renderChecklist();
-});
-
 
 navLinks.forEach(link => {
   link.addEventListener("click", () => setView(link.dataset.view));
@@ -939,8 +1099,8 @@ $("#editCompetitionForm").addEventListener("submit", event => {
   competition.password = $("#editCompetitionPassword").value;
   competition.people = [...editDraftPeople];
 
-  if (activeResponsibleFilter !== "all" && !competition.people.includes(activeResponsibleFilter)) {
-    activeResponsibleFilter = "all";
+  if (activeResponsibleFilter && !competition.people.includes(activeResponsibleFilter)) {
+    activeResponsibleFilter = "";
   }
 
   getAllTasks(competition).forEach(task => {
@@ -968,11 +1128,14 @@ $("#competitionForm").addEventListener("submit", event => {
     password: $("#competitionPassword").value,
     people: [...draftPeople],
     roles: makeEmptyRoles(),
-    tasks: cloneTasks(selectedTemplate.tasks)
+    sections: cloneSections(selectedTemplate.sections)
   };
 
   state.competitions.push(competition);
   activeCompetitionId = competition.id;
+  activeResponsibleFilter = "";
+  activeFilter = "all";
+  rolesVisible = false;
   saveState();
 
   $("#competitionForm").reset();
@@ -986,11 +1149,13 @@ $("#createTemplateBtn").addEventListener("click", () => {
   const template = {
     id: makeId(),
     name: "Nýggjur template",
-    tasks: {
-      before: [],
-      during: [],
-      after: []
-    }
+    sections: [
+      {
+        id: makeId(),
+        title: "Nýggj sektion",
+        tasks: []
+      }
+    ]
   };
 
   state.templates.push(template);
@@ -999,19 +1164,8 @@ $("#createTemplateBtn").addEventListener("click", () => {
   render();
 });
 
-filterButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    activeFilter = button.dataset.filter;
-
-    filterButtons.forEach(item => item.classList.remove("active"));
-    button.classList.add("active");
-
-    renderChecklist();
-  });
-});
-
 $$(".add-phase-task").forEach(button => {
-  button.addEventListener("click", () => addTaskToCompetition(button.dataset.phase));
+  button.addEventListener("click", () => addTaskToCompetition(button.dataset.sectionId));
 });
 
 $("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
@@ -1047,8 +1201,13 @@ $("#deleteTaskBtn").addEventListener("click", () => {
   const result = getEditingTask();
   if (!result) return;
 
-  deleteTaskWithConfirmation(result.competition.id, editingTask.phase, editingTask.taskId);
+  deleteTaskWithConfirmation(result.competition.id, editingTask.sectionId, editingTask.taskId);
   $("#taskEditModal").close();
+});
+
+$("#toggleRolesBtn").addEventListener("click", () => {
+  rolesVisible = !rolesVisible;
+  renderChecklist();
 });
 
 $("#editRolesBtn").addEventListener("click", openRolesEditor);
