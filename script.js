@@ -1,4 +1,4 @@
-const STORAGE_KEY = "kappingarklart-v3.4";
+const STORAGE_KEY = "kappingarklart-v3-fixed";
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -32,20 +32,20 @@ const defaultTemplates = [
     name: "Official kapping",
     tasks: {
       before: [
-        { title: "Vátta dato og høli", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Tryggja at hølið er tøkt og at dato ikki rakar aðrar kappingar." },
-        { title: "Finna dómarar", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Hav minst eina backup loysn." },
-        { title: "Gera startlista", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna vektbólkar, innvigan og bólkabýti." },
-        { title: "Kanna útgerð", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stong, skivur, lás, krít, klokku og teldu." }
+        { title: "Vátta dato og høli", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Tryggja at hølið er tøkt og at dato ikki rakar aðrar kappingar." },
+        { title: "Finna dómarar", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Hav minst eina backup loysn." },
+        { title: "Gera startlista", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna vektbólkar, innvigan og bólkabýti." },
+        { title: "Kanna útgerð", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stong, skivur, lás, krít, klokku og teldu." }
       ],
       during: [
-        { title: "Gjøgnumføra innvigan", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Skráset kropsvekt og fyrstu royndir." },
-        { title: "Briefa hjálparfólk", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Dómarar, speakers, loaders og skriviborð vita sína uppgávu." },
-        { title: "Halda úrslit dagførd", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna at royndir og samanlagt eru rætt." }
+        { title: "Gjøgnumføra innvigan", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Skráset kropsvekt og fyrstu royndir." },
+        { title: "Briefa hjálparfólk", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Dómarar, speakers, loaders og skriviborð vita sína uppgávu." },
+        { title: "Halda úrslit dagførd", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Kanna at royndir og samanlagt eru rætt." }
       ],
       after: [
-        { title: "Goyma og senda úrslit", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Goym PDF/Excel og send til viðkomandi persónar." },
-        { title: "Rudda hølið", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Útgerð aftur á pláss, rusk burtur og hølið latið pent eftir." },
-        { title: "Takki hjálparfólki og stuðlum", responsible: "", responsibles: [], hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stutt boð ella postur á sosialum miðlum." }
+        { title: "Goyma og senda úrslit", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Goym PDF/Excel og send til viðkomandi persónar." },
+        { title: "Rudda hølið", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Útgerð aftur á pláss, rusk burtur og hølið latið pent eftir." },
+        { title: "Takki hjálparfólki og stuðlum", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "Stutt boð ella postur á sosialum miðlum." }
       ]
     }
   }
@@ -53,25 +53,15 @@ const defaultTemplates = [
 
 let state = loadState();
 let activeView = "dashboard";
-let activeTemplateId = state.templates[0]?.id || null;
+let activeTemplateId = state.templates?.[0]?.id || null;
 let activeCompetitionId = null;
 let activeFilter = "all";
+let activeResponsibleFilter = "all";
 let draftPeople = [];
 let editingTask = null;
-let editingCompetitionId = null;
-let editDraftPeople = [];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-
-const appShell = $("#appShell");
-const navLinks = $$(".nav-link");
-const filterButtons = $$(".filter-btn");
-const views = {
-  dashboard: $("#dashboardView"),
-  templates: $("#templatesView"),
-  checklist: $("#checklistView")
-};
 
 function makeId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
@@ -85,22 +75,14 @@ function makeEmptyRoles() {
   return roles;
 }
 
-function taskResponsibles(task) {
-  if (Array.isArray(task.responsibles)) return task.responsibles.filter(Boolean);
-  if (task.responsible) return [task.responsible];
-  return [];
-}
-
 function cloneTasks(tasks) {
   const cloned = { before: [], during: [], after: [] };
-
   ["before", "during", "after"].forEach(phase => {
-    cloned[phase] = (tasks[phase] || []).map(task => ({
+    cloned[phase] = (tasks?.[phase] || []).map(task => ({
       id: makeId(),
       phase,
       title: task.title || "",
       responsible: task.responsible || "",
-      responsibles: taskResponsibles(task),
       hasDeadline: Boolean(task.hasDeadline && task.deadlineDate),
       deadlineDate: task.deadlineDate || "",
       deadlineTime: task.deadlineTime || "",
@@ -108,13 +90,16 @@ function cloneTasks(tasks) {
       done: false
     }));
   });
-
   return cloned;
 }
 
 function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) return JSON.parse(saved);
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (error) {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 
   return {
     sidebarCollapsed: false,
@@ -153,7 +138,6 @@ function normalizeState() {
       template.tasks[phase] ||= [];
       template.tasks[phase].forEach(task => {
         task.responsible ||= "";
-        task.responsibles = taskResponsibles(task);
         task.hasDeadline = Boolean(task.hasDeadline && task.deadlineDate);
         task.deadlineDate ||= "";
         task.deadlineTime ||= "";
@@ -165,14 +149,9 @@ function normalizeState() {
   state.competitions.forEach(competition => {
     competition.people ||= [];
     competition.roles ||= makeEmptyRoles();
-
     ROLE_DEFINITIONS.forEach(role => {
-      if (!Array.isArray(competition.roles[role.key])) {
-        competition.roles[role.key] = Array(role.max).fill("");
-      }
-      while (competition.roles[role.key].length < role.max) {
-        competition.roles[role.key].push("");
-      }
+      if (!Array.isArray(competition.roles[role.key])) competition.roles[role.key] = [];
+      while (competition.roles[role.key].length < role.max) competition.roles[role.key].push("");
       competition.roles[role.key] = competition.roles[role.key].slice(0, role.max);
     });
 
@@ -183,7 +162,6 @@ function normalizeState() {
         task.id ||= makeId();
         task.phase ||= phase;
         task.responsible ||= "";
-        task.responsibles = taskResponsibles(task);
         task.hasDeadline = Boolean(task.hasDeadline && task.deadlineDate);
         task.deadlineDate ||= "";
         task.deadlineTime ||= "";
@@ -219,11 +197,7 @@ function escapeHTML(value) {
 function formatDate(value) {
   if (!value) return "Eingin dato";
   const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("fo-FO", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  }).format(date);
+  return new Intl.DateTimeFormat("fo-FO", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 function formatDeadline(task) {
@@ -237,30 +211,31 @@ function getPersonColor(competition, person) {
   return PERSON_COLORS[index >= 0 ? index % PERSON_COLORS.length : 0];
 }
 
-function colorStyle(competition, person) {
+function personPillHTML(competition, person, removable = false, index = null) {
   const color = getPersonColor(competition, person);
-  return `--person-color:${color.border};--person-bg:${color.bg};--person-text:${color.text};`;
+  return `<span class="person-pill person-color-pill" style="--person-color:${color.border};--person-bg:${color.bg};--person-text:${color.text};">${escapeHTML(person)}${removable ? ` <button type="button" data-remove-person="${index}">×</button>` : ""}</span>`;
 }
 
-function personPillHTML(competition, person) {
-  return `<span class="person-pill person-color-pill" style="${colorStyle(competition, person)}">${escapeHTML(person)}</span>`;
+function getActiveCompetition() {
+  return state.competitions.find(item => item.id === activeCompetitionId) || null;
 }
 
 function applySidebarState() {
-  appShell.classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
+  $("#appShell").classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
+}
+
+function closeMobileMenu() {
+  $("#appShell").classList.remove("mobile-menu-open");
+  $("#mobileMenuButton").setAttribute("aria-expanded", "false");
 }
 
 function setView(viewName) {
   activeView = viewName;
-
-  Object.entries(views).forEach(([name, view]) => {
+  Object.entries({ dashboard: $("#dashboardView"), templates: $("#templatesView"), checklist: $("#checklistView") }).forEach(([name, view]) => {
     view.classList.toggle("active-view", name === viewName);
   });
-
-  navLinks.forEach(link => {
-    link.classList.toggle("active", link.dataset.view === viewName);
-  });
-
+  $$(".nav-link").forEach(link => link.classList.toggle("active", link.dataset.view === viewName));
+  closeMobileMenu();
   render();
 }
 
@@ -279,55 +254,21 @@ function renderDashboard() {
 
   state.competitions.forEach(competition => {
     const progress = getProgress(competition);
-
     const card = document.createElement("article");
     card.className = "competition-card";
-
     card.innerHTML = `
       <div class="card-top">
-        <div>
-          <h3>${escapeHTML(competition.name)}</h3>
-          <p class="card-meta">${formatDate(competition.date)} · ${escapeHTML(competition.venue || "Einki stað ásett")}</p>
-        </div>
+        <div><h3>${escapeHTML(competition.name)}</h3><p class="card-meta">${formatDate(competition.date)} · ${escapeHTML(competition.venue || "Einki stað ásett")}</p></div>
         <span class="status-badge">${progress === 100 ? "Klárt" : "Í gongd"}</span>
       </div>
-
-      <div class="mini-progress">
-        <strong>${progress}% liðugt</strong>
-        <div class="progress-track">
-          <div class="progress-fill" style="width: ${progress}%"></div>
-        </div>
-      </div>
-
-      <div class="competition-actions">
-        <button class="secondary-btn" data-open-competition>Opna checklist</button>
-        <button class="icon-action-btn" data-edit-competition title="Redigera kapping">✎</button>
-        <button class="icon-action-btn danger" data-delete-competition title="Strika kapping">×</button>
-      </div>
+      <div class="mini-progress"><strong>${progress}% liðugt</strong><div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div>
+      <button class="secondary-btn" type="button">Opna checklist</button>
     `;
-
-    const openCompetition = () => {
+    card.addEventListener("click", () => {
       activeCompetitionId = competition.id;
+      activeResponsibleFilter = "all";
       setView("checklist");
-    };
-
-    card.addEventListener("click", openCompetition);
-
-    card.querySelector("[data-open-competition]").addEventListener("click", event => {
-      event.stopPropagation();
-      openCompetition();
     });
-
-    card.querySelector("[data-edit-competition]").addEventListener("click", event => {
-      event.stopPropagation();
-      openCompetitionEditor(competition.id);
-    });
-
-    card.querySelector("[data-delete-competition]").addEventListener("click", event => {
-      event.stopPropagation();
-      deleteCompetitionWithConfirmation(competition.id);
-    });
-
     competitionGrid.appendChild(card);
   });
 }
@@ -339,16 +280,14 @@ function renderTemplateList() {
   state.templates.forEach(template => {
     const button = document.createElement("button");
     button.className = "list-item";
+    button.type = "button";
     button.textContent = template.name || "Ónevndur template";
-
-    if (template.id === activeTemplateId) button.classList.add("active");
-
+    button.classList.toggle("active", template.id === activeTemplateId);
     button.addEventListener("click", () => {
       activeTemplateId = template.id;
       renderTemplateList();
       renderTemplateEditor();
     });
-
     templateList.appendChild(button);
   });
 }
@@ -359,34 +298,14 @@ function renderTemplateEditor() {
 
   if (!template) {
     templateEditor.className = "panel editor-panel empty-panel";
-    templateEditor.innerHTML = `
-      <div class="empty-message">
-        <h3>Vel ein template</h3>
-        <p>Vel ein template til vinstru, ella stovna ein nýggjan.</p>
-      </div>
-    `;
+    templateEditor.innerHTML = `<div class="empty-message"><h3>Vel ein template</h3><p>Vel ein template til vinstru, ella stovna ein nýggjan.</p></div>`;
     return;
   }
 
   templateEditor.className = "panel editor-panel";
   templateEditor.innerHTML = `
-    <div class="editor-top">
-      <label>
-        Template navn
-        <input id="templateNameInput" value="${escapeHTML(template.name)}" />
-      </label>
-      <p class="page-description">Hetta er template-mode. Her byggir tú listan, men uppgávurnar verða fyrst merktar lidnar inni á sjálvari kappingini.</p>
-    </div>
-
-    <div class="template-editor-actions">
-      <button id="deleteTemplateBtn" class="danger-btn" type="button" ${state.templates.length <= 1 ? "disabled" : ""}>Strika template</button>
-    </div>
-
-    <div class="editor-grid">
-      ${renderTemplateSection("before", "Áðrenn kapping", template)}
-      ${renderTemplateSection("during", "Undir kapping", template)}
-      ${renderTemplateSection("after", "Eftir kapping", template)}
-    </div>
+    <div class="editor-top"><label>Template navn<input id="templateNameInput" value="${escapeHTML(template.name)}" /></label><p class="page-description">Hetta er template-mode. Her byggir tú listan, men uppgávurnar verða fyrst merktar lidnar inni á sjálvari kappingini.</p></div>
+    <div class="editor-grid">${renderTemplateSection("before", "Áðrenn kapping", template)}${renderTemplateSection("during", "Undir kapping", template)}${renderTemplateSection("after", "Eftir kapping", template)}</div>
   `;
 
   $("#templateNameInput").addEventListener("input", event => {
@@ -396,22 +315,10 @@ function renderTemplateEditor() {
     renderCompetitionSelect();
   });
 
-  $("#deleteTemplateBtn")?.addEventListener("click", () => {
-    deleteTemplateWithConfirmation(template.id);
-  });
-
   templateEditor.querySelectorAll("[data-add-task]").forEach(button => {
     button.addEventListener("click", () => {
       const phase = button.dataset.addTask;
-      template.tasks[phase].push({
-        title: "Nýggj uppgáva",
-        responsible: "",
-        responsibles: [],
-        hasDeadline: false,
-        deadlineDate: "",
-        deadlineTime: "",
-        note: ""
-      });
+      template.tasks[phase].push({ title: "Nýggj uppgáva", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "" });
       saveState();
       renderTemplateEditor();
     });
@@ -419,19 +326,14 @@ function renderTemplateEditor() {
 
   templateEditor.querySelectorAll("[data-task-field]").forEach(input => {
     input.addEventListener("input", () => {
-      const phase = input.dataset.phase;
-      const index = Number(input.dataset.index);
-      const field = input.dataset.taskField;
-      template.tasks[phase][index][field] = input.value;
+      template.tasks[input.dataset.phase][Number(input.dataset.index)][input.dataset.taskField] = input.value;
       saveState();
     });
   });
 
   templateEditor.querySelectorAll("[data-delete-task]").forEach(button => {
     button.addEventListener("click", () => {
-      const phase = button.dataset.phase;
-      const index = Number(button.dataset.index);
-      template.tasks[phase].splice(index, 1);
+      template.tasks[button.dataset.phase].splice(Number(button.dataset.index), 1);
       saveState();
       renderTemplateEditor();
     });
@@ -439,38 +341,25 @@ function renderTemplateEditor() {
 }
 
 function renderTemplateSection(phase, title, template) {
-  const tasks = template.tasks[phase];
-
+  const tasks = template.tasks[phase] || [];
   return `
-    <section class="template-section">
-      <h3>${title}</h3>
-
-      <div class="template-grid-header">
-        <span>Uppgáva</span>
-        <span>Ábyrgd / leiklutur</span>
-        <span>Freist</span>
-        <span>Viðmerking</span>
-        <span></span>
-      </div>
-
+    <section class="template-section"><h3>${title}</h3>
+      <div class="template-grid-header"><span>Uppgáva</span><span>Ábyrgd / leiklutur</span><span>Freist</span><span>Viðmerking</span><span></span></div>
       ${tasks.map((task, index) => `
         <div class="template-task">
           <input data-task-field="title" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.title)}" placeholder="Navn á uppgávu" />
           <input data-task-field="responsible" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.responsible || "")}" placeholder="Hvør er ábyrgdari?" />
           <input data-task-field="deadlineDate" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.deadlineDate || "")}" placeholder="Freist, valfrítt" />
           <input data-task-field="note" data-phase="${phase}" data-index="${index}" value="${escapeHTML(task.note || "")}" placeholder="Viðmerking" />
-          <button class="delete-small" data-delete-task data-phase="${phase}" data-index="${index}">×</button>
-        </div>
-      `).join("")}
+          <button class="delete-small" data-delete-task data-phase="${phase}" data-index="${index}" type="button">×</button>
+        </div>`).join("")}
       <button class="secondary-btn" data-add-task="${phase}" type="button">+ Legg afturat</button>
-    </section>
-  `;
+    </section>`;
 }
 
 function renderCompetitionSelect() {
   const competitionTemplate = $("#competitionTemplate");
   competitionTemplate.innerHTML = "";
-
   state.templates.forEach(template => {
     const option = document.createElement("option");
     option.value = template.id;
@@ -482,7 +371,6 @@ function renderCompetitionSelect() {
 function renderPeopleDraft() {
   const personList = $("#personList");
   personList.innerHTML = "";
-
   draftPeople.forEach((person, index) => {
     const color = PERSON_COLORS[index % PERSON_COLORS.length];
     const pill = document.createElement("span");
@@ -491,191 +379,88 @@ function renderPeopleDraft() {
     pill.style.setProperty("--person-bg", color.bg);
     pill.style.setProperty("--person-text", color.text);
     pill.innerHTML = `${escapeHTML(person)} <button type="button">×</button>`;
-
     pill.querySelector("button").addEventListener("click", () => {
       draftPeople.splice(index, 1);
       renderPeopleDraft();
     });
-
     personList.appendChild(pill);
   });
 }
 
-
-function renderEditPeopleDraft() {
-  const personList = $("#editPersonList");
-  personList.innerHTML = "";
-
-  editDraftPeople.forEach((person, index) => {
-    const color = PERSON_COLORS[index % PERSON_COLORS.length];
-    const pill = document.createElement("span");
-    pill.className = "person-pill person-color-pill";
-    pill.style.setProperty("--person-color", color.border);
-    pill.style.setProperty("--person-bg", color.bg);
-    pill.style.setProperty("--person-text", color.text);
-    pill.innerHTML = `${escapeHTML(person)} <button type="button">×</button>`;
-
-    pill.querySelector("button").addEventListener("click", () => {
-      editDraftPeople.splice(index, 1);
-      renderEditPeopleDraft();
-    });
-
-    personList.appendChild(pill);
+function getResponsibleOptions(competition) {
+  const names = new Set(competition.people || []);
+  getAllTasks(competition).forEach(task => {
+    if (task.responsible) names.add(task.responsible);
   });
+  return Array.from(names).filter(Boolean).sort((a, b) => a.localeCompare(b, "fo"));
 }
 
-function openCompetitionEditor(competitionId) {
-  const competition = state.competitions.find(item => item.id === competitionId);
-  if (!competition) return;
-
-  editingCompetitionId = competitionId;
-  editDraftPeople = [...(competition.people || [])];
-
-  $("#editCompetitionName").value = competition.name || "";
-  $("#editCompetitionDate").value = competition.date || "";
-  $("#editCompetitionVenue").value = competition.venue || "";
-  $("#editCompetitionPassword").value = competition.password || "";
-  $("#editPersonNameInput").value = "";
-
-  renderEditPeopleDraft();
-  $("#editCompetitionModal").showModal();
-}
-
-function deleteCompetitionWithConfirmation(competitionId) {
-  const competition = state.competitions.find(item => item.id === competitionId);
-  if (!competition) return;
-
-  const confirmed = window.confirm(`Vilt tú strika kappingina "${competition.name}"?`);
-  if (!confirmed) return;
-
-  state.competitions = state.competitions.filter(item => item.id !== competitionId);
-
-  if (activeCompetitionId === competitionId) {
-    activeCompetitionId = null;
-    activeView = "dashboard";
+function renderResponsibleFilter(competition) {
+  const select = $("#responsibleFilter");
+  const people = getResponsibleOptions(competition);
+  if (activeResponsibleFilter !== "all" && !people.includes(activeResponsibleFilter)) {
+    activeResponsibleFilter = "all";
   }
-
-  saveState();
-  setView("dashboard");
-}
-
-function deleteTemplateWithConfirmation(templateId) {
-  if (state.templates.length <= 1) {
-    window.alert("Tað ber ikki til at strika síðsta template.");
-    return;
-  }
-
-  const template = state.templates.find(item => item.id === templateId);
-  if (!template) return;
-
-  const confirmed = window.confirm(`Vilt tú strika template "${template.name}"?`);
-  if (!confirmed) return;
-
-  state.templates = state.templates.filter(item => item.id !== templateId);
-  activeTemplateId = state.templates[0]?.id || null;
-
-  saveState();
-  render();
+  select.innerHTML = `<option value="all">Allir persónar</option>${people.map(person => `<option value="${escapeHTML(person)}">${escapeHTML(person)}</option>`).join("")}`;
+  select.value = activeResponsibleFilter;
 }
 
 function renderChecklist() {
   if (activeView !== "checklist") return;
-
-  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  const competition = getActiveCompetition();
   if (!competition) return;
 
   $("#checklistTitle").textContent = competition.name;
   $("#checklistMeta").textContent = `${formatDate(competition.date)} · ${competition.venue || "Einki stað ásett"} · Lykilorð: ${competition.password || "einki"}`;
-
   renderRolesSummary(competition);
+  renderResponsibleFilter(competition);
 
   const progress = getProgress(competition);
   $("#progressLabel").textContent = `${progress}% liðugt`;
   $("#progressFill").style.width = `${progress}%`;
 
-  renderPhaseTasks("before", competition);
-  renderPhaseTasks("during", competition);
-  renderPhaseTasks("after", competition);
+  ["before", "during", "after"].forEach(phase => renderPhaseTasks(phase, competition));
 
   $$(".phase-column").forEach(column => {
-    const shouldShow =
-      activeFilter === "all" ||
-      activeFilter === "todo" ||
-      column.dataset.phase === activeFilter;
-
+    const shouldShow = activeFilter === "all" || activeFilter === "todo" || column.dataset.phase === activeFilter;
     column.style.display = shouldShow ? "" : "none";
   });
 }
 
 function renderRolesSummary(competition) {
-  const rolesSummary = $("#rolesSummary");
-
   const filledRoles = ROLE_DEFINITIONS
-    .map(role => ({
-      ...role,
-      names: (competition.roles?.[role.key] || []).filter(name => name.trim())
-    }))
+    .map(role => ({ ...role, names: (competition.roles?.[role.key] || []).filter(name => name.trim()) }))
     .filter(role => role.names.length > 0);
 
-  rolesSummary.classList.add("compact");
+  $("#rolesSummary").innerHTML = filledRoles.length
+    ? filledRoles.map(role => `<div class="role-summary-row"><div class="role-label">${role.label}</div><div class="role-names">${role.names.map(name => `<span class="person-pill">${escapeHTML(name)}</span>`).join("")}</div></div>`).join("")
+    : `<p class="roles-empty">Ongir kappingarleiklutur eru ásettir enn.</p>`;
+}
 
-  if (filledRoles.length === 0) {
-    rolesSummary.innerHTML = `<p class="roles-empty">Ongir kappingarleiklutur eru ásettir enn.</p>`;
-    return;
-  }
-
-  rolesSummary.innerHTML = filledRoles.map(role => `
-    <div class="role-compact-chip">
-      <span class="role-compact-label">${role.label}:</span>
-      <span class="role-compact-names">${role.names.map(escapeHTML).join(", ")}</span>
-    </div>
-  `).join("");
+function taskMatchesFilters(task) {
+  if (activeFilter === "todo" && task.done) return false;
+  if (activeResponsibleFilter !== "all" && task.responsible !== activeResponsibleFilter) return false;
+  return true;
 }
 
 function renderPhaseTasks(phase, competition) {
   const container = $(`#${phase}Tasks`);
   container.innerHTML = "";
+  const tasks = (competition.tasks[phase] || []).filter(taskMatchesFilters);
 
-  const tasks = competition.tasks[phase].filter(task => {
-    if (activeFilter === "todo") return !task.done;
-    return true;
-  });
+  if (tasks.length === 0) {
+    container.innerHTML = `<div class="empty-task-message">Ongar uppgávur at vísa.</div>`;
+    return;
+  }
 
   tasks.forEach(task => {
-    const responsiblePills = taskResponsibles(task)
-      .map(person => personPillHTML(competition, person))
-      .join("");
-
+    const responsiblePill = task.responsible ? personPillHTML(competition, task.responsible) : "";
     const card = document.createElement("article");
     card.className = `task-card ${task.done ? "done" : ""}`;
-
     card.innerHTML = `
-      <label class="task-check" title="Merk sum liðugt">
-        <input type="checkbox" ${task.done ? "checked" : ""} />
-      </label>
-
-      <div class="task-content">
-        <h4>${escapeHTML(task.title)}</h4>
-        <div class="task-meta">
-          
-          ${responsiblePills}
-          ${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : ""}
-        </div>
-        ${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : ""}
-      </div>
-
-      <div class="task-actions">
-        <button class="delete-task-btn" title="Strika uppgávu">×</button>
-      </div>
-    `;
-
-    card.addEventListener("click", () => {
-      openTaskEditor(competition.id, phase, task.id);
-    });
-
-    card.querySelector("input[type='checkbox']").addEventListener("click", event => {
-      event.stopPropagation();
-    });
+      <label class="task-check"><input type="checkbox" ${task.done ? "checked" : ""} /></label>
+      <div class="task-content"><h4>${escapeHTML(task.title)}</h4><div class="task-meta">${task.done ? `<span class="pill done">Liðugt</span>` : ""}${responsiblePill}${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : ""}</div>${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : ""}</div>
+      <button class="edit-task-btn" title="Redigera" type="button">✎</button>`;
 
     card.querySelector("input[type='checkbox']").addEventListener("change", event => {
       task.done = event.target.checked;
@@ -683,56 +468,17 @@ function renderPhaseTasks(phase, competition) {
       renderDashboard();
       renderChecklist();
     });
-
-    card.querySelector(".delete-task-btn").addEventListener("click", event => {
+    card.querySelector(".edit-task-btn").addEventListener("click", event => {
       event.stopPropagation();
-      deleteTaskWithConfirmation(competition.id, phase, task.id);
+      openTaskEditor(competition.id, phase, task.id);
     });
-
     container.appendChild(card);
   });
-}
-
-function deleteTaskWithConfirmation(competitionId, phase, taskId) {
-  const competition = state.competitions.find(item => item.id === competitionId);
-  if (!competition) return;
-
-  const task = competition.tasks[phase].find(item => item.id === taskId);
-  if (!task) return;
-
-  const confirmed = window.confirm(`Vilt tú strika uppgávuna "${task.title}"?`);
-  if (!confirmed) return;
-
-  competition.tasks[phase] = competition.tasks[phase].filter(item => item.id !== taskId);
-  saveState();
-  renderDashboard();
-  renderChecklist();
-}
-
-function renderResponsibleChoices(competition, task) {
-  const container = $("#editTaskResponsibleList");
-  const selected = new Set(taskResponsibles(task));
-
-  if (!competition.people || competition.people.length === 0) {
-    container.innerHTML = `<p class="roles-empty">Ongir ábyrgdarpersónar eru lagdir afturat hesi kappingini.</p>`;
-    return;
-  }
-
-  container.innerHTML = competition.people.map(person => {
-    const checked = selected.has(person) ? "checked" : "";
-    return `
-      <label class="responsible-choice" style="${colorStyle(competition, person)}">
-        <input type="checkbox" value="${escapeHTML(person)}" ${checked} />
-        <span>${escapeHTML(person)}</span>
-      </label>
-    `;
-  }).join("");
 }
 
 function openTaskEditor(competitionId, phase, taskId) {
   const competition = state.competitions.find(item => item.id === competitionId);
   const task = competition.tasks[phase].find(item => item.id === taskId);
-
   editingTask = { competitionId, phase, taskId };
 
   $("#editTaskTitle").value = task.title;
@@ -742,35 +488,29 @@ function openTaskEditor(competitionId, phase, taskId) {
   $("#editTaskDeadlineTime").value = task.deadlineTime || "";
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
 
-  renderResponsibleChoices(competition, task);
-
+  const select = $("#editTaskResponsible");
+  select.innerHTML = `<option value="">Vel ábyrgdarpersón</option>`;
+  getResponsibleOptions(competition).forEach(person => {
+    const option = document.createElement("option");
+    option.value = person;
+    option.textContent = person;
+    select.appendChild(option);
+  });
+  select.value = task.responsible || "";
   $("#taskEditModal").showModal();
 }
 
 function getEditingTask() {
   if (!editingTask) return null;
   const competition = state.competitions.find(item => item.id === editingTask.competitionId);
-  const task = competition.tasks[editingTask.phase].find(item => item.id === editingTask.taskId);
-  return { competition, task };
+  const task = competition?.tasks?.[editingTask.phase]?.find(item => item.id === editingTask.taskId);
+  return competition && task ? { competition, task } : null;
 }
 
 function addTaskToCompetition(phase) {
-  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  const competition = getActiveCompetition();
   if (!competition) return;
-
-  const task = {
-    id: makeId(),
-    phase,
-    title: "Nýggj uppgáva",
-    responsible: "",
-    responsibles: [],
-    hasDeadline: false,
-    deadlineDate: "",
-    deadlineTime: "",
-    note: "",
-    done: false
-  };
-
+  const task = { id: makeId(), phase, title: "Nýggj uppgáva", responsible: "", hasDeadline: false, deadlineDate: "", deadlineTime: "", note: "", done: false };
   competition.tasks[phase].push(task);
   saveState();
   renderChecklist();
@@ -778,52 +518,27 @@ function addTaskToCompetition(phase) {
 }
 
 function openRolesEditor() {
-  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  const competition = getActiveCompetition();
   if (!competition) return;
-
-  const rolesEditor = $("#rolesEditor");
-  rolesEditor.innerHTML = ROLE_DEFINITIONS.map(role => {
+  $("#rolesEditor").innerHTML = ROLE_DEFINITIONS.map(role => {
     const values = competition.roles[role.key] || Array(role.max).fill("");
-    return `
-      <section class="role-editor-card">
-        <div class="role-editor-heading">
-          <strong>${role.label}</strong>
-          <span>Max ${role.max}</span>
-        </div>
-        <div class="role-inputs">
-          ${Array.from({ length: role.max }).map((_, index) => `
-            <input
-              data-role-key="${role.key}"
-              data-role-index="${index}"
-              value="${escapeHTML(values[index] || "")}"
-              placeholder="Navn ${index + 1}"
-            />
-          `).join("")}
-        </div>
-      </section>
-    `;
+    return `<section class="role-editor-card"><div class="role-editor-heading"><strong>${role.label}</strong><span>Max ${role.max}</span></div><div class="role-inputs">${Array.from({ length: role.max }).map((_, index) => `<input data-role-key="${role.key}" data-role-index="${index}" value="${escapeHTML(values[index] || "")}" placeholder="Navn ${index + 1}" />`).join("")}</div></section>`;
   }).join("");
-
   $("#rolesModal").showModal();
 }
 
 function saveRolesFromEditor() {
-  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  const competition = getActiveCompetition();
   if (!competition) return;
-
-  ROLE_DEFINITIONS.forEach(role => {
-    competition.roles[role.key] = Array(role.max).fill("");
-  });
-
+  ROLE_DEFINITIONS.forEach(role => competition.roles[role.key] = Array(role.max).fill(""));
   $("#rolesEditor").querySelectorAll("[data-role-key]").forEach(input => {
-    const key = input.dataset.roleKey;
-    const index = Number(input.dataset.roleIndex);
-    competition.roles[key][index] = input.value.trim();
+    competition.roles[input.dataset.roleKey][Number(input.dataset.roleIndex)] = input.value.trim();
   });
-
   saveState();
   renderChecklist();
 }
+
+normalizeState();
 
 $("#toggleSidebar").addEventListener("click", () => {
   state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -831,11 +546,12 @@ $("#toggleSidebar").addEventListener("click", () => {
   applySidebarState();
 });
 
-navLinks.forEach(link => {
-  link.addEventListener("click", () => setView(link.dataset.view));
+$("#mobileMenuButton").addEventListener("click", () => {
+  const isOpen = $("#appShell").classList.toggle("mobile-menu-open");
+  $("#mobileMenuButton").setAttribute("aria-expanded", String(isOpen));
 });
 
-$("#openTemplatesFromDashboard").addEventListener("click", () => setView("templates"));
+$$(".nav-link").forEach(link => link.addEventListener("click", () => setView(link.dataset.view)));
 
 $("#openCreateCompetition").addEventListener("click", () => {
   draftPeople = [];
@@ -851,7 +567,6 @@ $("#addPersonBtn").addEventListener("click", () => {
   const input = $("#personNameInput");
   const name = input.value.trim();
   if (!name || draftPeople.includes(name)) return;
-
   draftPeople.push(name);
   input.value = "";
   renderPeopleDraft();
@@ -864,54 +579,10 @@ $("#personNameInput").addEventListener("keydown", event => {
   }
 });
 
-$("#closeEditCompetitionModal").addEventListener("click", () => $("#editCompetitionModal").close());
-
-$("#editAddPersonBtn").addEventListener("click", () => {
-  const input = $("#editPersonNameInput");
-  const name = input.value.trim();
-  if (!name || editDraftPeople.includes(name)) return;
-
-  editDraftPeople.push(name);
-  input.value = "";
-  renderEditPeopleDraft();
-});
-
-$("#editPersonNameInput").addEventListener("keydown", event => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    $("#editAddPersonBtn").click();
-  }
-});
-
-$("#editCompetitionForm").addEventListener("submit", event => {
-  event.preventDefault();
-
-  const competition = state.competitions.find(item => item.id === editingCompetitionId);
-  if (!competition) return;
-
-  competition.name = $("#editCompetitionName").value;
-  competition.date = $("#editCompetitionDate").value;
-  competition.venue = $("#editCompetitionVenue").value;
-  competition.password = $("#editCompetitionPassword").value;
-  competition.people = [...editDraftPeople];
-
-  getAllTasks(competition).forEach(task => {
-    task.responsibles = taskResponsibles(task).filter(person => competition.people.includes(person));
-    task.responsible = task.responsibles[0] || "";
-  });
-
-  saveState();
-  $("#editCompetitionModal").close();
-  renderDashboard();
-  renderChecklist();
-});
-
 $("#competitionForm").addEventListener("submit", event => {
   event.preventDefault();
-
-  const selectedTemplate = state.templates.find(template => template.id === $("#competitionTemplate").value);
-  if (!selectedTemplate) return;
-
+  const template = state.templates.find(item => item.id === $("#competitionTemplate").value);
+  if (!template) return;
   const competition = {
     id: makeId(),
     name: $("#competitionName").value,
@@ -920,13 +591,12 @@ $("#competitionForm").addEventListener("submit", event => {
     password: $("#competitionPassword").value,
     people: [...draftPeople],
     roles: makeEmptyRoles(),
-    tasks: cloneTasks(selectedTemplate.tasks)
+    tasks: cloneTasks(template.tasks)
   };
-
   state.competitions.push(competition);
   activeCompetitionId = competition.id;
+  activeResponsibleFilter = "all";
   saveState();
-
   $("#competitionForm").reset();
   draftPeople = [];
   renderPeopleDraft();
@@ -935,84 +605,63 @@ $("#competitionForm").addEventListener("submit", event => {
 });
 
 $("#createTemplateBtn").addEventListener("click", () => {
-  const template = {
-    id: makeId(),
-    name: "Nýggjur template",
-    tasks: {
-      before: [],
-      during: [],
-      after: []
-    }
-  };
-
+  const template = { id: makeId(), name: "Nýggjur template", tasks: { before: [], during: [], after: [] } };
   state.templates.push(template);
   activeTemplateId = template.id;
   saveState();
-  render();
+  setView("templates");
 });
 
-filterButtons.forEach(button => {
+$$(".filter-btn").forEach(button => {
   button.addEventListener("click", () => {
     activeFilter = button.dataset.filter;
-
-    filterButtons.forEach(item => item.classList.remove("active"));
-    button.classList.add("active");
-
+    $$(".filter-btn").forEach(item => item.classList.toggle("active", item === button));
     renderChecklist();
   });
 });
 
-$$(".add-phase-task").forEach(button => {
-  button.addEventListener("click", () => addTaskToCompetition(button.dataset.phase));
-});
-
-$("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
-
-$("#editTaskHasDeadline").addEventListener("change", () => {
-  $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
-});
-
-$("#taskEditForm").addEventListener("submit", event => {
-  event.preventDefault();
-
-  const result = getEditingTask();
-  if (!result) return;
-
-  const { task } = result;
-  const selectedResponsibles = $$("#editTaskResponsibleList input:checked").map(input => input.value);
-
-  task.title = $("#editTaskTitle").value;
-  task.responsibles = selectedResponsibles;
-  task.responsible = selectedResponsibles[0] || "";
-  task.hasDeadline = $("#editTaskHasDeadline").checked;
-  task.deadlineDate = task.hasDeadline ? $("#editTaskDeadlineDate").value : "";
-  task.deadlineTime = task.hasDeadline ? $("#editTaskDeadlineTime").value : "";
-  task.note = $("#editTaskNote").value;
-
-  saveState();
-  $("#taskEditModal").close();
-  renderDashboard();
+$("#responsibleFilter").addEventListener("change", event => {
+  activeResponsibleFilter = event.target.value || "all";
   renderChecklist();
 });
 
-$("#deleteTaskBtn").addEventListener("click", () => {
-  const result = getEditingTask();
-  if (!result) return;
-
-  deleteTaskWithConfirmation(result.competition.id, editingTask.phase, editingTask.taskId);
-  $("#taskEditModal").close();
-});
+$$(".add-phase-task").forEach(button => button.addEventListener("click", () => addTaskToCompetition(button.dataset.phase)));
 
 $("#editRolesBtn").addEventListener("click", openRolesEditor);
 $("#closeRolesModal").addEventListener("click", () => $("#rolesModal").close());
-
 $("#rolesForm").addEventListener("submit", event => {
   event.preventDefault();
   saveRolesFromEditor();
   $("#rolesModal").close();
 });
 
-normalizeState();
-applySidebarState();
-saveState();
+$("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
+$("#editTaskHasDeadline").addEventListener("change", event => {
+  $("#deadlineFields").classList.toggle("hidden", !event.target.checked);
+});
+
+$("#taskEditForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const current = getEditingTask();
+  if (!current) return;
+  current.task.title = $("#editTaskTitle").value.trim();
+  current.task.responsible = $("#editTaskResponsible").value;
+  current.task.hasDeadline = $("#editTaskHasDeadline").checked;
+  current.task.deadlineDate = current.task.hasDeadline ? $("#editTaskDeadlineDate").value : "";
+  current.task.deadlineTime = current.task.hasDeadline ? $("#editTaskDeadlineTime").value : "";
+  current.task.note = $("#editTaskNote").value.trim();
+  saveState();
+  $("#taskEditModal").close();
+  renderChecklist();
+});
+
+$("#deleteTaskBtn").addEventListener("click", () => {
+  const current = getEditingTask();
+  if (!current) return;
+  current.competition.tasks[editingTask.phase] = current.competition.tasks[editingTask.phase].filter(task => task.id !== editingTask.taskId);
+  saveState();
+  $("#taskEditModal").close();
+  renderChecklist();
+});
+
 render();
