@@ -1,16 +1,14 @@
-# Kappingarklárt v4
+# Kappingarklárt v3.5
 
-Static HTML/CSS/JavaScript prototype for Stoyt competition checklist management.
+Extended from version 3.4.1.
 
-## Version 4 improvements
+Updates in this version:
 
-- Added a responsible-person dropdown filter on the checklist.
-- `Allir persónar` is selected by default.
-- Improved mobile navigation with a top hamburger menu.
-- Removed the visible version card from the main interface.
-- Moved version text to the bottom of the desktop sidebar only when expanded.
-- Mobile version does not show version text and does not show the expand/collapse sidebar button.
+- Added a task filter for responsible person inside each competition
+- Mobile version now uses a top hamburger menu instead of the left sidebar
+- Mobile menu does not show the collapse/expand button
+- Removed the version card from the sidebar
+- Added simple version text at the bottom of the expanded desktop sidebar
+- Version text is hidden when the sidebar is collapsed and hidden on mobile
 
-## How to open
-
-Open `index.html` in a browser or run the folder with Live Server in Visual Studio Code.
+Open `index.html` in your browser.
