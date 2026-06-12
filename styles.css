@@ -1289,3 +1289,707 @@ textarea:focus {
     padding: 0.5rem 0.7rem;
   }
 }
+
+
+/* v3.7 custom competition sections and removable role fields */
+.add-section-panel {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  background: rgba(255, 255, 255, 0.62);
+  border-style: dashed;
+}
+
+.empty-section-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.competition-section-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.section-title-input {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.08rem;
+  font-weight: 900;
+  padding: 0.15rem 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.section-title-input:focus {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 0.65rem;
+  padding-inline: 0.55rem;
+}
+
+.delete-section-btn,
+.remove-role-field-btn {
+  display: grid;
+  place-items: center;
+  border: 1px solid #f2c4c4;
+  background: #fff7f7;
+  color: var(--red);
+  border-radius: 999px;
+  font-weight: 950;
+}
+
+.delete-section-btn {
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.role-inputs {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.role-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.remove-role-field-btn {
+  width: 2.45rem;
+  height: 2.45rem;
+}
+
+@media (max-width: 560px) {
+  .competition-section-heading {
+    grid-template-columns: 1fr auto;
+  }
+
+  .role-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* v3.8 multi-select section filters */
+.filter-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.filter-row .filter-btn {
+  flex: 0 0 auto;
+  min-width: 8.5rem;
+  max-width: 14rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.filter-row .section-filter-btn {
+  min-width: 10rem;
+}
+
+@media (max-width: 560px) {
+  .filter-row .filter-btn,
+  .filter-row .section-filter-btn {
+    min-width: 8rem;
+    max-width: 100%;
+  }
+}
+
+
+/* v3.9 multi-select responsible filters */
+.responsible-filter-pill {
+  flex: 0 0 auto;
+}
+
+.responsible-filter-pill.active {
+  position: relative;
+}
+
+
+/* v4.0 one-column competition layout and wide desktop task rows */
+.checklist-columns {
+  grid-template-columns: 1fr !important;
+  align-items: stretch;
+}
+
+.phase-column {
+  width: 100%;
+}
+
+.add-section-panel {
+  min-height: auto;
+}
+
+.task-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.task-content {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(150px, auto);
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.task-content h4 {
+  margin-bottom: 0.25rem;
+}
+
+.task-note {
+  grid-column: 1;
+}
+
+.task-meta {
+  margin-bottom: 0;
+  align-items: center;
+}
+
+.task-meta .deadline {
+  justify-self: end;
+}
+
+.task-actions {
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .task-card {
+    align-items: start;
+  }
+
+  .task-content {
+    display: block;
+  }
+
+  .task-content h4 {
+    margin-bottom: 0.5rem;
+  }
+
+  .task-meta {
+    margin-bottom: 0.55rem;
+  }
+}
+
+
+/* v4.1 structured desktop task rows */
+.task-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.task-row-content {
+  display: grid;
+  grid-template-columns:
+    minmax(10rem, 1.15fr)
+    minmax(10rem, 1fr)
+    minmax(10rem, 0.9fr)
+    minmax(14rem, 1.45fr);
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.task-title-cell,
+.task-people-cell,
+.task-deadline-cell,
+.task-comment-cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.task-cell-label {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.task-title-cell h4 {
+  margin: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.task-people-cell .task-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.task-deadline-cell .pill,
+.task-comment-cell .task-note {
+  margin: 0;
+}
+
+.task-deadline-cell .pill {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  align-items: flex-start;
+}
+
+.task-comment-cell .task-note {
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.task-empty-cell {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  color: var(--muted-2, var(--muted));
+  font-weight: 800;
+  opacity: 0.65;
+}
+
+@media (max-width: 980px) {
+  .task-row-content {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .task-card {
+    align-items: start;
+  }
+
+  .task-row-content {
+    display: block;
+  }
+
+  .task-title-cell,
+  .task-people-cell,
+  .task-deadline-cell,
+  .task-comment-cell {
+    margin-bottom: 0.65rem;
+  }
+
+  .task-comment-cell {
+    margin-bottom: 0;
+  }
+
+  .task-cell-label {
+    margin-bottom: 0.22rem;
+  }
+}
+
+
+/* v4.2 drag-and-drop ordering */
+.section-drag-handle {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-weight: 950;
+  line-height: 1;
+  cursor: grab;
+}
+
+.section-drag-handle:active {
+  cursor: grabbing;
+}
+
+.competition-section-heading {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+}
+
+.task-card {
+  cursor: grab;
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.dragging,
+.phase-column.section-dragging {
+  opacity: 0.45;
+}
+
+.task-list-drop-target {
+  outline: 2px dashed rgba(47, 95, 159, 0.38);
+  outline-offset: 6px;
+  border-radius: 18px;
+  min-height: 3.25rem;
+}
+
+.task-drop-before,
+.task-drop-after,
+.section-drop-before,
+.section-drop-after {
+  position: relative;
+}
+
+.task-drop-before::before,
+.task-drop-after::after,
+.section-drop-before::before,
+.section-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 95, 159, 0.14);
+  z-index: 5;
+}
+
+.task-drop-before::before,
+.section-drop-before::before {
+  top: -0.45rem;
+}
+
+.task-drop-after::after,
+.section-drop-after::after {
+  bottom: -0.45rem;
+}
+
+.add-section-panel.section-drop-target {
+  outline: 2px dashed rgba(47, 95, 159, 0.46);
+  outline-offset: 6px;
+}
+
+@media (max-width: 760px) {
+  .section-drag-handle {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+
+/* v4.3 drag/drop polish and alphabetical display support */
+.task-check {
+  align-self: center;
+  display: grid;
+  place-items: center;
+}
+
+.task-check input {
+  margin: 0;
+}
+
+.delete-section-btn {
+  width: auto !important;
+  height: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0.1rem 0.25rem !important;
+  color: var(--red) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.delete-section-btn:hover {
+  background: transparent !important;
+  transform: none;
+  color: #8f1212 !important;
+}
+
+.section-title-input {
+  user-select: text;
+}
+
+
+/* v4.4 natural full-page scrolling */
+html,
+body {
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.main {
+  overflow: visible !important;
+}
+
+.modal-card {
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.roles-editor {
+  max-height: 58vh;
+}
+
+@media (max-width: 860px) {
+  body {
+    overflow-y: auto;
+  }
+
+  .sidebar {
+    height: auto;
+    max-height: calc(100vh - 72px);
+  }
+
+  .main {
+    overflow: visible !important;
+  }
+
+  .modal-card {
+    max-height: 86vh;
+  }
+}
+
+
+/* v4.4.1 fixed desktop sidebar with natural right-side page scroll */
+@media (min-width: 861px) {
+  .app-shell {
+    display: block !important;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    width: 276px;
+    height: 100vh;
+    max-height: 100vh;
+    z-index: 20;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar {
+    width: 86px;
+  }
+
+  .main {
+    margin-left: 276px !important;
+    width: min(1180px, calc(100% - 276px - 2rem)) !important;
+  }
+
+  .app-shell.sidebar-collapsed .main {
+    margin-left: 86px !important;
+    width: min(1180px, calc(100% - 86px - 2rem)) !important;
+  }
+}
+
+
+/* v4.4.2 fixed sidebar no-scroll and correct right-side centering */
+@media (min-width: 861px) {
+  .sidebar {
+    overflow: hidden !important;
+    overscroll-behavior: contain;
+  }
+
+  .main {
+    box-sizing: border-box;
+    margin-left: 276px !important;
+    margin-right: 0 !important;
+    width: calc(100% - 276px) !important;
+    max-width: none !important;
+    padding-left: max(1rem, calc((100% - 276px - 1180px) / 2)) !important;
+    padding-right: max(1rem, calc((100% - 276px - 1180px) / 2)) !important;
+  }
+
+  .app-shell.sidebar-collapsed .main {
+    margin-left: 86px !important;
+    width: calc(100% - 86px) !important;
+    padding-left: max(1rem, calc((100% - 86px - 1180px) / 2)) !important;
+    padding-right: max(1rem, calc((100% - 86px - 1180px) / 2)) !important;
+  }
+}
+
+
+/* v4.5.1 drag auto-scroll fix: keep dragged elements pointer-active for native drag/drop reliability. */
+
+
+/* v4.5.2 empty section drop target + safer auto-scroll support */
+.task-list-empty {
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.empty-drop-hint {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.task-list-drop-target {
+  outline: 2px dashed rgba(47, 95, 159, 0.48) !important;
+  outline-offset: 6px;
+  border-radius: 18px;
+  min-height: 76px;
+}
+
+
+/* v4.6 empty section is clean until dragging */
+.empty-drop-hint {
+  display: none !important;
+}
+
+.task-list-empty {
+  min-height: 44px;
+  border: 0 !important;
+  background: transparent !important;
+  place-items: stretch;
+}
+
+.task-list-empty.task-list-drop-target {
+  min-height: 44px;
+  outline: 0 !important;
+  position: relative;
+}
+
+.task-list-empty.task-list-drop-target::before {
+  content: "";
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 95, 159, 0.14);
+  margin: 0.65rem 0.75rem;
+}
+
+
+/* v4.7 template drag-and-drop + task person add */
+.template-section-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.template-task-list {
+  display: grid;
+  gap: 10px;
+}
+
+.template-task-simple {
+  grid-template-columns: auto minmax(190px, 1fr) minmax(190px, 1fr) 44px !important;
+}
+
+.template-task-drag-handle {
+  color: var(--muted);
+  font-weight: 950;
+  cursor: grab;
+  align-self: center;
+  padding: 0 0.25rem;
+}
+
+.template-task-simple.dragging,
+.template-section.section-dragging {
+  opacity: 0.45;
+}
+
+.template-task-list-empty {
+  min-height: 42px;
+}
+
+.template-task-list-empty.template-task-list-drop-target {
+  position: relative;
+  outline: 0 !important;
+}
+
+.template-task-list-empty.template-task-list-drop-target::before,
+.template-drop-before::before,
+.template-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 95, 159, 0.14);
+  z-index: 5;
+}
+
+.template-task-list-empty.template-task-list-drop-target::before {
+  position: static;
+  display: block;
+  margin: 0.65rem 0.75rem;
+}
+
+.template-drop-before,
+.template-drop-after {
+  position: relative;
+}
+
+.template-drop-before::before {
+  top: -0.45rem;
+}
+
+.template-drop-after::after {
+  bottom: -0.45rem;
+}
+
+.template-task-list-drop-target {
+  outline: 2px dashed rgba(47, 95, 159, 0.38);
+  outline-offset: 6px;
+  border-radius: 18px;
+}
+
+.responsible-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.responsible-editor-heading .field-label {
+  margin: 0;
+}
+
+#taskPersonAddRow {
+  margin-bottom: 0.85rem;
+}
+
+.empty-list-message {
+  color: var(--muted);
+  padding: 0.85rem;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--soft);
+  font-weight: 800;
+}
+
+
+/* v4.7.1 keep task add-person row collapsed until + is clicked */
+.hidden,
+[hidden],
+#taskPersonAddRow.hidden,
+#taskPersonAddRow[hidden] {
+  display: none !important;
+}

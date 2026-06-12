@@ -1,20 +1,14 @@
-# Kappingarklárt v3.6
+# Kappingarklárt v4.7.1
 
-Extended from version 3.5.
+Small fix from version 4.7.
 
-Updates in this version:
+Fixes in this version:
 
-- Removed the progress card/bar inside an opened competition
-- Kept progress visible on the Yvirlit competition cards
-- Roles are hidden by default inside a competition
-- Added show/hide button for assigned roles
-- Replaced the large role edit button with a compact people icon
-- Roles modal now uses plus buttons to add fields gradually instead of showing all empty fields
-- Responsible-person filter now uses colored people buttons instead of a dropdown
-- No person selected means all tasks are shown
-- Template tasks now only use task name and comment
-- Templates can now have custom sections with editable section names
-- Competitions render custom sections in a three-column desktop grid, wrapping to new rows when needed
-- Removed colored dots from section headings
+- The add-person input inside the task editor is fully hidden by default
+- Only the + button is shown until the user clicks it
+- After adding a person, the input row hides again
+- Editing a task no longer changes its position in the section
+- Adding a responsible person, deadline, comment, title change or checkbox change keeps the task in the same spot
+- The only way to move tasks remains drag-and-drop
 
 Open `index.html` in your browser.

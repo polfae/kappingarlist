@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v3.6";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.7.1";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -27,49 +27,15 @@ const ROLE_DEFINITIONS = [
   { key: "dj", label: "DJ", max: 1 }
 ];
 
-const defaultTemplates = [
-  {
-    id: "template-official",
-    name: "Official kapping",
-    sections: [
-      {
-        id: "before",
-        title: "Áðrenn kapping",
-        tasks: [
-          { title: "Vátta dato og høli", note: "Tryggja at hølið er tøkt og at dato ikki rakar aðrar kappingar." },
-          { title: "Finna dómarar", note: "Hav minst eina backup loysn." },
-          { title: "Gera startlista", note: "Kanna vektbólkar, innvigan og bólkabýti." },
-          { title: "Kanna útgerð", note: "Stong, skivur, lás, krít, klokku og teldu." }
-        ]
-      },
-      {
-        id: "during",
-        title: "Undir kapping",
-        tasks: [
-          { title: "Gjøgnumføra innvigan", note: "Skráset kropsvekt og fyrstu royndir." },
-          { title: "Briefa hjálparfólk", note: "Dómarar, speakers, loaders og skriviborð vita sína uppgávu." },
-          { title: "Halda úrslit dagførd", note: "Kanna at royndir og samanlagt eru rætt." }
-        ]
-      },
-      {
-        id: "after",
-        title: "Eftir kapping",
-        tasks: [
-          { title: "Goyma og senda úrslit", note: "Goym PDF/Excel og send til viðkomandi persónar." },
-          { title: "Rudda hølið", note: "Útgerð aftur á pláss, rusk burtur og hølið latið pent eftir." },
-          { title: "Takki hjálparfólki og stuðlum", note: "Stutt boð ella postur á sosialum miðlum." }
-        ]
-      }
-    ]
-  }
-];
+const defaultTemplates = [];
 
 let state = loadState();
 let activeView = "dashboard";
 let activeTemplateId = state.templates[0]?.id || null;
 let activeCompetitionId = null;
-let activeFilter = "all";
-let activeResponsibleFilter = "";
+let activeSectionFilters = [];
+let showIncompleteOnly = false;
+let activeResponsibleFilters = [];
 let mobileMenuOpen = false;
 let draftPeople = [];
 let editingTask = null;
@@ -77,6 +43,14 @@ let editingCompetitionId = null;
 let editDraftPeople = [];
 let rolesVisible = false;
 let roleInputCounts = {};
+let draggedTask = null;
+let draggedSectionId = null;
+let suppressTaskClick = false;
+let autoScrollFrame = null;
+let autoScrollSpeed = 0;
+let draggedTemplateTask = null;
+let draggedTemplateSectionIndex = null;
+let suppressTemplateClick = false;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -206,23 +180,8 @@ function loadState() {
 
   return {
     sidebarCollapsed: false,
-    templates: structuredClone(defaultTemplates),
-    competitions: [
-      {
-        id: makeId(),
-        name: "Skansi Cup 2026",
-        date: "2026-09-12",
-        venue: "Tvørmegi",
-        password: "stoyt2026",
-        people: ["Pól", "Jens", "Herborg", "Niels Áki"],
-        roles: {
-          ...makeEmptyRoles(),
-          competitionLeader: ["Pól"],
-          speaker: ["Herborg"]
-        },
-        sections: cloneSections(defaultTemplates[0].sections)
-      }
-    ]
+    templates: [],
+    competitions: []
   };
 }
 
@@ -236,16 +195,19 @@ function normalizeState() {
   state.competitions ||= [];
 
   state.templates.forEach(normalizeTemplateSections);
+  if (typeof activeTemplateId !== "undefined" && activeTemplateId && !state.templates.some(template => template.id === activeTemplateId)) {
+    activeTemplateId = state.templates[0]?.id || null;
+  }
 
   state.competitions.forEach(competition => {
-    competition.people ||= [];
+    competition.people = uniqueNames(competition.people || []);
     competition.roles ||= makeEmptyRoles();
 
     ROLE_DEFINITIONS.forEach(role => {
       if (!Array.isArray(competition.roles[role.key])) {
         competition.roles[role.key] = [];
       }
-      competition.roles[role.key] = competition.roles[role.key].filter(name => String(name).trim()).slice(0, role.max);
+      competition.roles[role.key] = uniqueNames(competition.roles[role.key]).slice(0, role.max);
     });
 
     normalizeCompetitionSections(competition);
@@ -268,6 +230,42 @@ function escapeHTML(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function capitalizeNamePart(part) {
+  return part
+    .split("-")
+    .map(piece => {
+      if (!piece) return piece;
+      return piece.charAt(0).toLocaleUpperCase("fo") + piece.slice(1).toLocaleLowerCase("fo");
+    })
+    .join("-");
+}
+
+function formatName(name) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map(capitalizeNamePart)
+    .join(" ");
+}
+
+function sortNames(names) {
+  return [...(names || [])]
+    .map(formatName)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "fo", { sensitivity: "base" }));
+}
+
+function uniqueNames(names) {
+  const seen = new Set();
+  return sortNames(names).filter(name => {
+    const key = name.toLocaleLowerCase("fo");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function formatDate(value) {
@@ -297,7 +295,8 @@ function colorStyle(competition, person) {
 }
 
 function personPillHTML(competition, person) {
-  return `<span class="person-pill person-color-pill" style="${colorStyle(competition, person)}">${escapeHTML(person)}</span>`;
+  const formattedPerson = formatName(person);
+  return `<span class="person-pill person-color-pill" style="${colorStyle(competition, formattedPerson)}">${escapeHTML(formattedPerson)}</span>`;
 }
 
 function applySidebarState() {
@@ -365,8 +364,9 @@ function renderDashboard() {
 
     const openCompetition = () => {
       activeCompetitionId = competition.id;
-      activeResponsibleFilter = "";
-      activeFilter = "all";
+      activeResponsibleFilters = [];
+      activeSectionFilters = [];
+      showIncompleteOnly = false;
       rolesVisible = false;
       setView("checklist");
     };
@@ -395,6 +395,11 @@ function renderDashboard() {
 function renderTemplateList() {
   const templateList = $("#templateList");
   templateList.innerHTML = "";
+
+  if (state.templates.length === 0) {
+    templateList.innerHTML = `<div class="empty-list-message">Ongir templates enn.</div>`;
+    return;
+  }
 
   state.templates.forEach(template => {
     const button = document.createElement("button");
@@ -440,7 +445,7 @@ function renderTemplateEditor() {
 
     <div class="template-editor-actions">
       <button id="addTemplateSectionBtn" class="secondary-btn" type="button">+ Nýggj sektion</button>
-      <button id="deleteTemplateBtn" class="danger-btn" type="button" ${state.templates.length <= 1 ? "disabled" : ""}>Strika template</button>
+      <button id="deleteTemplateBtn" class="danger-btn" type="button">Strika template</button>
     </div>
 
     <div class="editor-grid">
@@ -469,11 +474,23 @@ function renderTemplateEditor() {
     renderTemplateEditor();
   });
 
+  setupTemplateDragAndDrop(template, templateEditor);
+
   templateEditor.querySelectorAll("[data-section-title]").forEach(input => {
     input.addEventListener("input", () => {
       const sectionIndex = Number(input.dataset.sectionTitle);
       template.sections[sectionIndex].title = input.value;
       saveState();
+    });
+
+    input.addEventListener("dragover", event => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    input.addEventListener("drop", event => {
+      event.preventDefault();
+      event.stopPropagation();
     });
   });
 
@@ -492,10 +509,6 @@ function renderTemplateEditor() {
   templateEditor.querySelectorAll("[data-delete-section]").forEach(button => {
     button.addEventListener("click", () => {
       const sectionIndex = Number(button.dataset.sectionIndex);
-      if (template.sections.length <= 1) {
-        window.alert("Ein template skal hava minst eina sektion.");
-        return;
-      }
       const section = template.sections[sectionIndex];
       const confirmed = window.confirm(`Vilt tú strika sektionina "${section.title}"?`);
       if (!confirmed) return;
@@ -526,15 +539,174 @@ function renderTemplateEditor() {
   });
 }
 
+
+function setupTemplateDragAndDrop(template, templateEditor) {
+  templateEditor.querySelectorAll("[data-template-task]").forEach(taskElement => {
+    taskElement.addEventListener("dragstart", event => {
+      if (event.target.matches("input, button")) {
+        event.preventDefault();
+        return;
+      }
+
+      draggedTemplateTask = {
+        sectionIndex: Number(taskElement.dataset.sectionIndex),
+        taskIndex: Number(taskElement.dataset.taskIndex)
+      };
+      taskElement.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify({ type: "template-task", ...draggedTemplateTask }));
+    });
+
+    taskElement.addEventListener("dragend", () => {
+      draggedTemplateTask = null;
+      taskElement.classList.remove("dragging");
+      templateEditor.querySelectorAll(".template-drop-before, .template-drop-after, .template-task-list-drop-target").forEach(item => {
+        item.classList.remove("template-drop-before", "template-drop-after", "template-task-list-drop-target");
+      });
+    });
+  });
+
+  templateEditor.querySelectorAll("[data-template-task-list]").forEach(taskList => {
+    taskList.addEventListener("dragover", event => {
+      if (!draggedTemplateTask) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const targetTask = event.target.closest("[data-template-task]");
+      templateEditor.querySelectorAll(".template-drop-before, .template-drop-after").forEach(item => {
+        item.classList.remove("template-drop-before", "template-drop-after");
+      });
+
+      if (!targetTask || !taskList.contains(targetTask)) {
+        taskList.classList.add("template-task-list-drop-target");
+        return;
+      }
+
+      taskList.classList.remove("template-task-list-drop-target");
+      const rect = targetTask.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      targetTask.classList.add(placeAfter ? "template-drop-after" : "template-drop-before");
+    });
+
+    taskList.addEventListener("dragenter", event => {
+      if (!draggedTemplateTask) return;
+      event.preventDefault();
+      taskList.classList.add("template-task-list-drop-target");
+    });
+
+    taskList.addEventListener("dragleave", event => {
+      if (!taskList.contains(event.relatedTarget)) {
+        taskList.classList.remove("template-task-list-drop-target");
+      }
+    });
+
+    taskList.addEventListener("drop", event => {
+      if (!draggedTemplateTask) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const targetSectionIndex = Number(taskList.dataset.templateTaskList);
+      const targetTask = event.target.closest("[data-template-task]");
+      let targetIndex = template.sections[targetSectionIndex].tasks.length;
+
+      if (targetTask && taskList.contains(targetTask)) {
+        const rect = targetTask.getBoundingClientRect();
+        const placeAfter = event.clientY > rect.top + rect.height / 2;
+        targetIndex = Number(targetTask.dataset.taskIndex) + (placeAfter ? 1 : 0);
+      }
+
+      moveTemplateTask(template, draggedTemplateTask.sectionIndex, draggedTemplateTask.taskIndex, targetSectionIndex, targetIndex);
+    });
+  });
+
+  templateEditor.querySelectorAll("[data-template-section-drag]").forEach(handle => {
+    const sectionElement = handle.closest("[data-template-section-index]");
+    const sectionIndex = Number(handle.dataset.templateSectionDrag);
+
+    handle.addEventListener("dragstart", event => {
+      draggedTemplateSectionIndex = sectionIndex;
+      sectionElement.classList.add("section-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", JSON.stringify({ type: "template-section", sectionIndex }));
+    });
+
+    handle.addEventListener("dragend", () => {
+      draggedTemplateSectionIndex = null;
+      sectionElement.classList.remove("section-dragging");
+      templateEditor.querySelectorAll(".section-drop-before, .section-drop-after").forEach(item => {
+        item.classList.remove("section-drop-before", "section-drop-after");
+      });
+    });
+
+    sectionElement.addEventListener("dragover", event => {
+      if (draggedTemplateSectionIndex === null || draggedTemplateSectionIndex === sectionIndex) return;
+      event.preventDefault();
+
+      const rect = sectionElement.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      templateEditor.querySelectorAll(".section-drop-before, .section-drop-after").forEach(item => {
+        item.classList.remove("section-drop-before", "section-drop-after");
+      });
+      sectionElement.classList.add(placeAfter ? "section-drop-after" : "section-drop-before");
+    });
+
+    sectionElement.addEventListener("drop", event => {
+      if (draggedTemplateSectionIndex === null || draggedTemplateSectionIndex === sectionIndex) return;
+      event.preventDefault();
+
+      const rect = sectionElement.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      moveTemplateSection(template, draggedTemplateSectionIndex, sectionIndex + (placeAfter ? 1 : 0));
+    });
+  });
+}
+
+function moveTemplateTask(template, fromSectionIndex, fromTaskIndex, toSectionIndex, targetIndex) {
+  const fromSection = template.sections[fromSectionIndex];
+  const toSection = template.sections[toSectionIndex];
+
+  if (!fromSection || !toSection) return;
+  const [task] = fromSection.tasks.splice(fromTaskIndex, 1);
+  if (!task) return;
+
+  if (fromSectionIndex === toSectionIndex && fromTaskIndex < targetIndex) {
+    targetIndex -= 1;
+  }
+
+  targetIndex = Math.max(0, Math.min(targetIndex, toSection.tasks.length));
+  toSection.tasks.splice(targetIndex, 0, task);
+
+  saveState();
+  renderTemplateEditor();
+}
+
+function moveTemplateSection(template, fromIndex, targetIndex) {
+  const [section] = template.sections.splice(fromIndex, 1);
+  if (!section) return;
+
+  if (fromIndex < targetIndex) {
+    targetIndex -= 1;
+  }
+
+  targetIndex = Math.max(0, Math.min(targetIndex, template.sections.length));
+  template.sections.splice(targetIndex, 0, section);
+
+  saveState();
+  renderTemplateEditor();
+}
+
 function renderTemplateSection(section, sectionIndex, template) {
   return `
-    <section class="template-section">
-      <div class="template-section-header">
+    <section class="template-section" data-template-section-index="${sectionIndex}">
+      <div class="template-section-header" data-template-section-drop="${sectionIndex}">
+        <button class="section-drag-handle template-section-drag-handle" type="button" draggable="true" data-template-section-drag="${sectionIndex}" title="Flyt sektion" aria-label="Flyt sektion">⋮⋮</button>
         <label>
           Sektion navn
           <input data-section-title="${sectionIndex}" value="${escapeHTML(section.title)}" placeholder="T.d. Fyrireiking" />
         </label>
-        <button class="delete-small" data-delete-section data-section-index="${sectionIndex}" type="button" title="Strika sektion" ${template.sections.length <= 1 ? "disabled" : ""}>×</button>
+        <button class="delete-small template-delete-icon" data-delete-section data-section-index="${sectionIndex}" type="button" title="Strika sektion">×</button>
       </div>
 
       <div class="template-grid-header template-grid-header-simple">
@@ -543,13 +715,16 @@ function renderTemplateSection(section, sectionIndex, template) {
         <span></span>
       </div>
 
-      ${section.tasks.map((task, taskIndex) => `
-        <div class="template-task template-task-simple">
-          <input data-task-field="title" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.title)}" placeholder="Navn á uppgávu" />
-          <input data-task-field="note" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.note || "")}" placeholder="Viðmerking" />
-          <button class="delete-small" data-delete-task data-section-index="${sectionIndex}" data-task-index="${taskIndex}" type="button">×</button>
-        </div>
-      `).join("")}
+      <div class="template-task-list ${section.tasks.length === 0 ? "template-task-list-empty" : ""}" data-template-task-list="${sectionIndex}">
+        ${section.tasks.map((task, taskIndex) => `
+          <div class="template-task template-task-simple" draggable="true" data-template-task data-section-index="${sectionIndex}" data-task-index="${taskIndex}">
+            <span class="template-task-drag-handle" title="Flyt uppgávu">⋮⋮</span>
+            <input data-task-field="title" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.title)}" placeholder="Navn á uppgávu" />
+            <input data-task-field="note" data-section-index="${sectionIndex}" data-task-index="${taskIndex}" value="${escapeHTML(task.note || "")}" placeholder="Viðmerking" />
+            <button class="delete-small" data-delete-task data-section-index="${sectionIndex}" data-task-index="${taskIndex}" type="button">×</button>
+          </div>
+        `).join("")}
+      </div>
       <button class="secondary-btn" data-add-task data-section-index="${sectionIndex}" type="button">+ Legg uppgávu afturat</button>
     </section>
   `;
@@ -558,6 +733,17 @@ function renderTemplateSection(section, sectionIndex, template) {
 function renderCompetitionSelect() {
   const competitionTemplate = $("#competitionTemplate");
   competitionTemplate.innerHTML = "";
+
+  const noTemplateOption = document.createElement("option");
+  noTemplateOption.value = "";
+  noTemplateOption.textContent = "Eingin template";
+  noTemplateOption.selected = true;
+  competitionTemplate.appendChild(noTemplateOption);
+
+  if (state.templates.length === 0) {
+    templateList.innerHTML = `<div class="empty-list-message">Ongir templates enn.</div>`;
+    return;
+  }
 
   state.templates.forEach(template => {
     const option = document.createElement("option");
@@ -571,6 +757,7 @@ function renderPeopleDraft() {
   const personList = $("#personList");
   personList.innerHTML = "";
 
+  draftPeople = uniqueNames(draftPeople);
   draftPeople.forEach((person, index) => {
     const color = PERSON_COLORS[index % PERSON_COLORS.length];
     const pill = document.createElement("span");
@@ -593,6 +780,7 @@ function renderEditPeopleDraft() {
   const personList = $("#editPersonList");
   personList.innerHTML = "";
 
+  editDraftPeople = uniqueNames(editDraftPeople);
   editDraftPeople.forEach((person, index) => {
     const color = PERSON_COLORS[index % PERSON_COLORS.length];
     const pill = document.createElement("span");
@@ -647,11 +835,6 @@ function deleteCompetitionWithConfirmation(competitionId) {
 }
 
 function deleteTemplateWithConfirmation(templateId) {
-  if (state.templates.length <= 1) {
-    window.alert("Tað ber ikki til at strika síðsta template.");
-    return;
-  }
-
   const template = state.templates.find(item => item.id === templateId);
   if (!template) return;
 
@@ -716,17 +899,34 @@ function renderRolesSummary(competition) {
 
 function renderSectionFilters(competition) {
   const container = $("#sectionFilterRow");
+  const validSectionIds = new Set((competition.sections || []).map(section => section.id));
+  activeSectionFilters = activeSectionFilters.filter(sectionId => validSectionIds.has(sectionId));
+
   container.innerHTML = `
-    <button class="filter-btn ${activeFilter === "all" ? "active" : ""}" data-filter="all">Alt</button>
-    <button class="filter-btn ${activeFilter === "todo" ? "active" : ""}" data-filter="todo">Ikki liðugt</button>
+    <button class="filter-btn ${showIncompleteOnly ? "active" : ""}" data-status-filter="todo">Ikki liðugt</button>
     ${competition.sections.map(section => `
-      <button class="filter-btn ${activeFilter === section.id ? "active" : ""}" data-filter="${section.id}">${escapeHTML(section.title)}</button>
+      <button
+        class="filter-btn section-filter-btn ${activeSectionFilters.includes(section.id) ? "active" : ""}"
+        data-section-filter="${section.id}"
+      >${escapeHTML(section.title)}</button>
     `).join("")}
   `;
 
-  container.querySelectorAll("[data-filter]").forEach(button => {
+  container.querySelector("[data-status-filter='todo']")?.addEventListener("click", () => {
+    showIncompleteOnly = !showIncompleteOnly;
+    renderChecklist();
+  });
+
+  container.querySelectorAll("[data-section-filter]").forEach(button => {
     button.addEventListener("click", () => {
-      activeFilter = button.dataset.filter;
+      const sectionId = button.dataset.sectionFilter;
+
+      if (activeSectionFilters.includes(sectionId)) {
+        activeSectionFilters = activeSectionFilters.filter(item => item !== sectionId);
+      } else {
+        activeSectionFilters.push(sectionId);
+      }
+
       renderChecklist();
     });
   });
@@ -734,18 +934,21 @@ function renderSectionFilters(competition) {
 
 function renderResponsibleFilter(competition) {
   const container = $("#responsibleFilterPills");
-  const people = competition.people || [];
+  const people = sortNames(competition.people || []);
+  const validPeople = new Set(people);
+
+  activeResponsibleFilters = activeResponsibleFilters.filter(person => validPeople.has(person));
 
   if (people.length === 0) {
     container.innerHTML = "";
-    activeResponsibleFilter = "";
+    activeResponsibleFilters = [];
     return;
   }
 
   container.innerHTML = people.map(person => `
     <button
       type="button"
-      class="responsible-filter-pill ${activeResponsibleFilter === person ? "active" : ""}"
+      class="responsible-filter-pill ${activeResponsibleFilters.includes(person) ? "active" : ""}"
       style="${colorStyle(competition, person)}"
       data-person="${escapeHTML(person)}"
     >${escapeHTML(person)}</button>
@@ -753,21 +956,29 @@ function renderResponsibleFilter(competition) {
 
   container.querySelectorAll("[data-person]").forEach(button => {
     button.addEventListener("click", () => {
-      activeResponsibleFilter = activeResponsibleFilter === button.dataset.person ? "" : button.dataset.person;
+      const person = button.dataset.person;
+
+      if (activeResponsibleFilters.includes(person)) {
+        activeResponsibleFilters = activeResponsibleFilters.filter(item => item !== person);
+      } else {
+        activeResponsibleFilters.push(person);
+      }
+
       renderChecklist();
     });
   });
 }
 
 function sectionMatchesFilter(section) {
-  return activeFilter === "all" || activeFilter === "todo" || activeFilter === section.id;
+  return activeSectionFilters.length === 0 || activeSectionFilters.includes(section.id);
 }
 
 function taskMatchesFilters(task) {
-  const matchesStatus = activeFilter === "todo" ? !task.done : true;
+  const matchesStatus = showIncompleteOnly ? !task.done : true;
+  const taskPeople = taskResponsibles(task);
   const matchesResponsible =
-    !activeResponsibleFilter ||
-    taskResponsibles(task).includes(activeResponsibleFilter);
+    activeResponsibleFilters.length === 0 ||
+    activeResponsibleFilters.some(person => taskPeople.includes(person));
 
   return matchesStatus && matchesResponsible;
 }
@@ -776,22 +987,64 @@ function renderChecklistSections(competition) {
   const container = $("#checklistColumns");
   container.innerHTML = "";
 
+  const filteringTasks =
+    showIncompleteOnly ||
+    activeResponsibleFilters.length > 0;
+
   competition.sections
     .filter(sectionMatchesFilter)
     .forEach(section => {
+      const visibleTasks = section.tasks.filter(taskMatchesFilters);
+
+      if (filteringTasks && visibleTasks.length === 0) {
+        return;
+      }
+
       const sectionElement = document.createElement("section");
       sectionElement.className = "phase-column";
       sectionElement.dataset.sectionId = section.id;
 
       sectionElement.innerHTML = `
-        <div class="phase-heading"><h3>${escapeHTML(section.title)}</h3></div>
-        <div class="task-list"></div>
+        <div class="phase-heading competition-section-heading" data-section-drop-target="${section.id}">
+          <button class="section-drag-handle" type="button" draggable="true" data-section-drag="${section.id}" title="Flyt sektion" aria-label="Flyt sektion">⋮⋮</button>
+          <input class="section-title-input" data-section-title="${section.id}" value="${escapeHTML(section.title)}" aria-label="Sektion navn" />
+          <button class="delete-section-btn" data-delete-section="${section.id}" type="button" title="Strika sektion">×</button>
+        </div>
+        <div class="task-list" data-task-drop-section="${section.id}"></div>
         <button class="add-phase-task secondary-btn" data-section-id="${section.id}" type="button">+ Legg uppgávu afturat</button>
       `;
 
       const taskList = sectionElement.querySelector(".task-list");
-      section.tasks.filter(taskMatchesFilters).forEach(task => {
+
+      if (visibleTasks.length === 0) {
+        taskList.classList.add("task-list-empty");
+      }
+
+      visibleTasks.forEach(task => {
         taskList.appendChild(renderTaskCard(competition, section.id, task));
+      });
+
+      setupTaskDropZone(taskList, section.id);
+      setupSectionDragHandlers(sectionElement, section.id);
+
+      sectionElement.querySelector("[data-section-title]").addEventListener("input", event => {
+        section.title = event.target.value;
+        saveState();
+        renderSectionFilters(competition);
+      });
+
+      sectionElement.querySelector("[data-section-title]").addEventListener("dragover", event => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
+      sectionElement.querySelector("[data-section-title]").addEventListener("drop", event => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+
+      sectionElement.querySelector("[data-delete-section]").addEventListener("click", () => {
+        deleteCompetitionSection(section.id);
       });
 
       sectionElement.querySelector("[data-section-id]").addEventListener("click", () => {
@@ -800,28 +1053,305 @@ function renderChecklistSections(competition) {
 
       container.appendChild(sectionElement);
     });
+
+  const addSectionCard = document.createElement("section");
+  addSectionCard.className = "phase-column add-section-panel";
+  addSectionCard.innerHTML = `
+    <button id="addCompetitionSectionBtn" class="primary-btn full-width" type="button">+ Nýggj sektion</button>
+    ${competition.sections.length === 0 ? `<p class="empty-section-hint">Hendan kappingin hevur ongar sektionir enn. Legg eina sektion afturat fyri at byrja.</p>` : ""}
+  `;
+  addSectionCard.addEventListener("dragover", event => {
+    if (!draggedSectionId) return;
+    updateDragAutoScroll(event);
+    event.preventDefault();
+    addSectionCard.classList.add("section-drop-target");
+  });
+
+  addSectionCard.addEventListener("dragleave", () => {
+    addSectionCard.classList.remove("section-drop-target");
+  });
+
+  addSectionCard.addEventListener("drop", event => {
+    if (!draggedSectionId) return;
+    event.preventDefault();
+    stopDragAutoScroll();
+    addSectionCard.classList.remove("section-drop-target");
+    moveSection(draggedSectionId, competition.sections.length);
+  });
+
+  addSectionCard.querySelector("#addCompetitionSectionBtn").addEventListener("click", addCompetitionSection);
+  container.appendChild(addSectionCard);
+}
+
+function addCompetitionSection() {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
+  const section = {
+    id: makeId(),
+    title: "Nýggj sektion",
+    tasks: []
+  };
+
+  competition.sections.push(section);
+  activeSectionFilters = [];
+  showIncompleteOnly = false;
+  saveState();
+  renderChecklist();
+}
+
+function deleteCompetitionSection(sectionId) {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
+  const section = competition.sections.find(item => item.id === sectionId);
+  if (!section) return;
+
+  const hasTasks = (section.tasks || []).length > 0;
+  const message = hasTasks
+    ? `Vilt tú strika sektionina "${section.title}"? Allar uppgávur í sektionini verða eisini strikaðar.`
+    : `Vilt tú strika sektionina "${section.title}"?`;
+
+  const confirmed = window.confirm(message);
+  if (!confirmed) return;
+
+  competition.sections = competition.sections.filter(item => item.id !== sectionId);
+
+  activeSectionFilters = activeSectionFilters.filter(item => item !== sectionId);
+
+  saveState();
+  renderDashboard();
+  renderChecklist();
+}
+
+
+function updateDragAutoScroll(event) {
+  // Auto-scroll while dragging was intentionally disabled in v4.6.
+}
+
+function runDragAutoScroll() {
+  // Auto-scroll while dragging was intentionally disabled in v4.6.
+}
+
+function stopDragAutoScroll() {
+  autoScrollSpeed = 0;
+
+  if (autoScrollFrame !== null) {
+    cancelAnimationFrame(autoScrollFrame);
+    autoScrollFrame = null;
+  }
+}
+
+function findSection(competition, sectionId) {
+  return competition.sections.find(section => section.id === sectionId);
+}
+
+function setupTaskDropZone(taskList, targetSectionId) {
+  taskList.addEventListener("dragover", event => {
+    if (!draggedTask) return;
+
+    updateDragAutoScroll(event);
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+
+    const targetCard = event.target.closest(".task-card");
+    $$(".task-drop-before, .task-drop-after").forEach(item => item.classList.remove("task-drop-before", "task-drop-after"));
+
+    if (!targetCard || !taskList.contains(targetCard)) {
+      taskList.classList.add("task-list-drop-target");
+      return;
+    }
+
+    taskList.classList.remove("task-list-drop-target");
+    const rect = targetCard.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+    targetCard.classList.add(placeAfter ? "task-drop-after" : "task-drop-before");
+  });
+
+  taskList.addEventListener("dragenter", event => {
+    if (!draggedTask) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    taskList.classList.add("task-list-drop-target");
+  });
+
+  taskList.addEventListener("dragleave", event => {
+    if (!taskList.contains(event.relatedTarget)) {
+      taskList.classList.remove("task-list-drop-target");
+      $$(".task-drop-before, .task-drop-after").forEach(item => item.classList.remove("task-drop-before", "task-drop-after"));
+    }
+  });
+
+  taskList.addEventListener("drop", event => {
+    if (!draggedTask) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    stopDragAutoScroll();
+    taskList.classList.remove("task-list-drop-target");
+
+    const competition = state.competitions.find(item => item.id === activeCompetitionId);
+    if (!competition) return;
+
+    const targetSection = findSection(competition, targetSectionId);
+    if (!targetSection) return;
+
+    const targetCard = event.target.closest(".task-card");
+    let targetIndex = targetSection.tasks.length;
+
+    if (targetCard && taskList.contains(targetCard)) {
+      const targetTaskId = targetCard.dataset.taskId;
+      const rect = targetCard.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      const foundIndex = targetSection.tasks.findIndex(task => task.id === targetTaskId);
+      targetIndex = foundIndex + (placeAfter ? 1 : 0);
+    }
+
+    moveTask(draggedTask.sectionId, draggedTask.taskId, targetSectionId, targetIndex);
+  });
+}
+
+function restoreTaskOrder(section, orderedTaskIds) {
+  if (!section || !Array.isArray(section.tasks) || !Array.isArray(orderedTaskIds)) return;
+
+  const orderMap = new Map(orderedTaskIds.map((id, index) => [id, index]));
+  section.tasks.sort((a, b) => {
+    const aIndex = orderMap.has(a.id) ? orderMap.get(a.id) : Number.MAX_SAFE_INTEGER;
+    const bIndex = orderMap.has(b.id) ? orderMap.get(b.id) : Number.MAX_SAFE_INTEGER;
+    return aIndex - bIndex;
+  });
+}
+
+function moveTask(fromSectionId, taskId, toSectionId, targetIndex) {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
+  const fromSection = findSection(competition, fromSectionId);
+  const toSection = findSection(competition, toSectionId);
+  if (!fromSection || !toSection) return;
+
+  const currentIndex = fromSection.tasks.findIndex(task => task.id === taskId);
+  if (currentIndex === -1) return;
+
+  const [task] = fromSection.tasks.splice(currentIndex, 1);
+
+  if (fromSectionId === toSectionId && currentIndex < targetIndex) {
+    targetIndex -= 1;
+  }
+
+  targetIndex = Math.max(0, Math.min(targetIndex, toSection.tasks.length));
+  toSection.tasks.splice(targetIndex, 0, task);
+
+  saveState();
+  renderDashboard();
+  renderChecklist();
+}
+
+function setupSectionDragHandlers(sectionElement, sectionId) {
+  const handle = sectionElement.querySelector("[data-section-drag]");
+
+  handle.addEventListener("dragstart", event => {
+    draggedSectionId = sectionId;
+    sectionElement.classList.add("section-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", JSON.stringify({ type: "section", sectionId }));
+  });
+
+  handle.addEventListener("dragend", () => {
+    stopDragAutoScroll();
+    draggedSectionId = null;
+    sectionElement.classList.remove("section-dragging");
+    $$(".section-drop-before, .section-drop-after, .section-drop-target").forEach(item => {
+      item.classList.remove("section-drop-before", "section-drop-after", "section-drop-target");
+    });
+  });
+
+  sectionElement.addEventListener("dragover", event => {
+    if (!draggedSectionId || draggedSectionId === sectionId) return;
+
+    updateDragAutoScroll(event);
+    event.preventDefault();
+    const rect = sectionElement.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+
+    $$(".section-drop-before, .section-drop-after").forEach(item => item.classList.remove("section-drop-before", "section-drop-after"));
+    sectionElement.classList.add(placeAfter ? "section-drop-after" : "section-drop-before");
+  });
+
+  sectionElement.addEventListener("drop", event => {
+    if (!draggedSectionId || draggedSectionId === sectionId) return;
+
+    event.preventDefault();
+    stopDragAutoScroll();
+    const competition = state.competitions.find(item => item.id === activeCompetitionId);
+    if (!competition) return;
+
+    const rect = sectionElement.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+    const targetIndex = competition.sections.findIndex(section => section.id === sectionId) + (placeAfter ? 1 : 0);
+
+    moveSection(draggedSectionId, targetIndex);
+  });
+}
+
+function moveSection(sectionId, targetIndex) {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
+  const currentIndex = competition.sections.findIndex(section => section.id === sectionId);
+  if (currentIndex === -1) return;
+
+  const [section] = competition.sections.splice(currentIndex, 1);
+
+  if (currentIndex < targetIndex) {
+    targetIndex -= 1;
+  }
+
+  targetIndex = Math.max(0, Math.min(targetIndex, competition.sections.length));
+  competition.sections.splice(targetIndex, 0, section);
+
+  saveState();
+  renderChecklist();
 }
 
 function renderTaskCard(competition, sectionId, task) {
-  const responsiblePills = taskResponsibles(task)
+  const responsiblePills = sortNames(taskResponsibles(task))
     .map(person => personPillHTML(competition, person))
     .join("");
 
   const card = document.createElement("article");
   card.className = `task-card ${task.done ? "done" : ""}`;
+  card.draggable = true;
+  card.dataset.taskId = task.id;
+  card.dataset.sectionId = sectionId;
 
   card.innerHTML = `
     <label class="task-check" title="Merk sum liðugt">
       <input type="checkbox" ${task.done ? "checked" : ""} />
     </label>
 
-    <div class="task-content">
-      <h4>${escapeHTML(task.title)}</h4>
-      <div class="task-meta">
-        ${responsiblePills}
-        ${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : ""}
+    <div class="task-content task-row-content">
+      <div class="task-title-cell">
+        <span class="task-cell-label">Uppgáva</span>
+        <h4>${escapeHTML(task.title)}</h4>
       </div>
-      ${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : ""}
+
+      <div class="task-people-cell">
+        <span class="task-cell-label">Ábyrgd</span>
+        <div class="task-meta">${responsiblePills || `<span class="task-empty-cell">—</span>`}</div>
+      </div>
+
+      <div class="task-deadline-cell">
+        <span class="task-cell-label">Freist</span>
+        ${task.hasDeadline && task.deadlineDate ? `<span class="pill deadline">Freist: ${formatDeadline(task)}</span>` : `<span class="task-empty-cell">—</span>`}
+      </div>
+
+      <div class="task-comment-cell">
+        <span class="task-cell-label">Viðmerking</span>
+        ${task.note ? `<p class="task-note">${escapeHTML(task.note)}</p>` : `<span class="task-empty-cell">—</span>`}
+      </div>
     </div>
 
     <div class="task-actions">
@@ -829,8 +1359,31 @@ function renderTaskCard(competition, sectionId, task) {
     </div>
   `;
 
-  card.addEventListener("click", () => {
+  card.addEventListener("click", event => {
+    if (suppressTaskClick) {
+      event.preventDefault();
+      return;
+    }
+
     openTaskEditor(competition.id, sectionId, task.id);
+  });
+
+  card.addEventListener("dragstart", event => {
+    draggedTask = { competitionId: competition.id, sectionId, taskId: task.id };
+    suppressTaskClick = true;
+    card.classList.add("dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", JSON.stringify({ type: "task", taskId: task.id, sectionId }));
+  });
+
+  card.addEventListener("dragend", () => {
+    stopDragAutoScroll();
+    draggedTask = null;
+    card.classList.remove("dragging");
+    $$(".task-drop-before, .task-drop-after").forEach(item => item.classList.remove("task-drop-before", "task-drop-after"));
+    setTimeout(() => {
+      suppressTaskClick = false;
+    }, 0);
   });
 
   card.querySelector("input[type='checkbox']").addEventListener("click", event => {
@@ -873,14 +1426,14 @@ function deleteTaskWithConfirmation(competitionId, sectionId, taskId) {
 
 function renderResponsibleChoices(competition, task) {
   const container = $("#editTaskResponsibleList");
-  const selected = new Set(taskResponsibles(task));
+  const selected = new Set(sortNames(taskResponsibles(task)));
 
   if (!competition.people || competition.people.length === 0) {
     container.innerHTML = `<p class="roles-empty">Ongir ábyrgdarpersónar eru lagdir afturat hesi kappingini.</p>`;
     return;
   }
 
-  container.innerHTML = competition.people.map(person => {
+  container.innerHTML = sortNames(competition.people).map(person => {
     const checked = selected.has(person) ? "checked" : "";
     return `
       <label class="responsible-choice" style="${colorStyle(competition, person)}">
@@ -905,6 +1458,9 @@ function openTaskEditor(competitionId, sectionId, taskId) {
   $("#editTaskDeadlineTime").value = task.deadlineTime || "";
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
 
+  $("#taskPersonAddRow").classList.add("hidden");
+  $("#taskPersonAddRow").hidden = true;
+  $("#taskPersonNameInput").value = "";
   renderResponsibleChoices(competition, task);
   $("#taskEditModal").showModal();
 }
@@ -962,7 +1518,7 @@ function renderRolesEditor() {
 
   const rolesEditor = $("#rolesEditor");
   rolesEditor.innerHTML = ROLE_DEFINITIONS.map(role => {
-    const values = competition.roles[role.key] || [];
+    const values = uniqueNames(competition.roles[role.key] || []);
     const visibleCount = Math.min(role.max, roleInputCounts[role.key] || 0);
     const canAdd = visibleCount < role.max;
 
@@ -977,12 +1533,15 @@ function renderRolesEditor() {
         </div>
         <div class="role-inputs">
           ${Array.from({ length: visibleCount }).map((_, index) => `
-            <input
-              data-role-key="${role.key}"
-              data-role-index="${index}"
-              value="${escapeHTML(values[index] || "")}"
-              placeholder="Navn ${index + 1}"
-            />
+            <div class="role-input-row">
+              <input
+                data-role-key="${role.key}"
+                data-role-index="${index}"
+                value="${escapeHTML(values[index] || "")}"
+                placeholder="Navn ${index + 1}"
+              />
+              <button class="remove-role-field-btn" type="button" data-remove-role-field="${role.key}" data-role-index="${index}" title="Strika teig">×</button>
+            </div>
           `).join("")}
         </div>
       </section>
@@ -994,6 +1553,24 @@ function renderRolesEditor() {
       const key = button.dataset.addRoleField;
       const role = ROLE_DEFINITIONS.find(item => item.key === key);
       roleInputCounts[key] = Math.min(role.max, (roleInputCounts[key] || 0) + 1);
+      renderRolesEditor();
+    });
+  });
+
+  rolesEditor.querySelectorAll("[data-remove-role-field]").forEach(button => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.removeRoleField;
+      const index = Number(button.dataset.roleIndex);
+      const inputs = Array.from(rolesEditor.querySelectorAll(`[data-role-key="${key}"]`));
+      const values = inputs.map(input => input.value);
+      values.splice(index, 1);
+
+      const competition = state.competitions.find(item => item.id === activeCompetitionId);
+      if (competition) {
+        competition.roles[key] = uniqueNames(values);
+      }
+
+      roleInputCounts[key] = Math.max(0, (roleInputCounts[key] || 0) - 1);
       renderRolesEditor();
     });
   });
@@ -1009,20 +1586,64 @@ function saveRolesFromEditor() {
 
   $("#rolesEditor").querySelectorAll("[data-role-key]").forEach(input => {
     const key = input.dataset.roleKey;
-    const value = input.value.trim();
+    const value = formatName(input.value);
     if (value) {
       competition.roles[key].push(value);
     }
   });
 
   ROLE_DEFINITIONS.forEach(role => {
-    competition.roles[role.key] = competition.roles[role.key].slice(0, role.max);
+    competition.roles[role.key] = uniqueNames(competition.roles[role.key]).slice(0, role.max);
   });
 
   rolesVisible = true;
   saveState();
   renderChecklist();
 }
+
+document.addEventListener("dragenter", event => {
+  if (!draggedTask && !draggedSectionId) return;
+  updateDragAutoScroll(event);
+});
+
+document.addEventListener("dragover", event => {
+  if (!draggedTask && !draggedSectionId) return;
+
+  updateDragAutoScroll(event);
+
+  const overSidebar = event.target.closest(".sidebar");
+  if (!overSidebar) {
+    event.preventDefault();
+  }
+
+  const blockedTarget = event.target.closest("input, textarea, select, [contenteditable='true']");
+  if (blockedTarget) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+});
+
+document.addEventListener("drop", event => {
+  if (!draggedTask && !draggedSectionId) return;
+
+  stopDragAutoScroll();
+
+  const validDropTarget = event.target.closest("[data-task-drop-section], .phase-column, .add-section-panel");
+  const blockedTarget = event.target.closest("input, textarea, select, [contenteditable='true']");
+
+  if (blockedTarget || !validDropTarget) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+});
+
+document.addEventListener("dragend", stopDragAutoScroll);
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    stopDragAutoScroll();
+  }
+});
 
 $("#toggleSidebar").addEventListener("click", () => {
   state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -1053,8 +1674,8 @@ $("#backToDashboard").addEventListener("click", () => setView("dashboard"));
 
 $("#addPersonBtn").addEventListener("click", () => {
   const input = $("#personNameInput");
-  const name = input.value.trim();
-  if (!name || draftPeople.includes(name)) return;
+  const name = formatName(input.value);
+  if (!name || draftPeople.some(person => person.toLocaleLowerCase("fo") === name.toLocaleLowerCase("fo"))) return;
 
   draftPeople.push(name);
   input.value = "";
@@ -1072,8 +1693,8 @@ $("#closeEditCompetitionModal").addEventListener("click", () => $("#editCompetit
 
 $("#editAddPersonBtn").addEventListener("click", () => {
   const input = $("#editPersonNameInput");
-  const name = input.value.trim();
-  if (!name || editDraftPeople.includes(name)) return;
+  const name = formatName(input.value);
+  if (!name || editDraftPeople.some(person => person.toLocaleLowerCase("fo") === name.toLocaleLowerCase("fo"))) return;
 
   editDraftPeople.push(name);
   input.value = "";
@@ -1097,14 +1718,14 @@ $("#editCompetitionForm").addEventListener("submit", event => {
   competition.date = $("#editCompetitionDate").value;
   competition.venue = $("#editCompetitionVenue").value;
   competition.password = $("#editCompetitionPassword").value;
-  competition.people = [...editDraftPeople];
+  competition.people = uniqueNames(editDraftPeople);
 
-  if (activeResponsibleFilter && !competition.people.includes(activeResponsibleFilter)) {
-    activeResponsibleFilter = "";
-  }
+  activeResponsibleFilters = activeResponsibleFilters
+    .map(formatName)
+    .filter(person => competition.people.includes(person));
 
   getAllTasks(competition).forEach(task => {
-    task.responsibles = taskResponsibles(task).filter(person => competition.people.includes(person));
+    task.responsibles = uniqueNames(taskResponsibles(task)).filter(person => competition.people.includes(person));
     task.responsible = task.responsibles[0] || "";
   });
 
@@ -1117,8 +1738,10 @@ $("#editCompetitionForm").addEventListener("submit", event => {
 $("#competitionForm").addEventListener("submit", event => {
   event.preventDefault();
 
-  const selectedTemplate = state.templates.find(template => template.id === $("#competitionTemplate").value);
-  if (!selectedTemplate) return;
+  const selectedTemplateId = $("#competitionTemplate").value;
+  const selectedTemplate = selectedTemplateId
+    ? state.templates.find(template => template.id === selectedTemplateId)
+    : null;
 
   const competition = {
     id: makeId(),
@@ -1126,19 +1749,21 @@ $("#competitionForm").addEventListener("submit", event => {
     date: $("#competitionDate").value,
     venue: $("#competitionVenue").value,
     password: $("#competitionPassword").value,
-    people: [...draftPeople],
+    people: uniqueNames(draftPeople),
     roles: makeEmptyRoles(),
-    sections: cloneSections(selectedTemplate.sections)
+    sections: selectedTemplate ? cloneSections(selectedTemplate.sections) : []
   };
 
   state.competitions.push(competition);
   activeCompetitionId = competition.id;
-  activeResponsibleFilter = "";
-  activeFilter = "all";
+  activeResponsibleFilters = [];
+  activeSectionFilters = [];
+  showIncompleteOnly = false;
   rolesVisible = false;
   saveState();
 
   $("#competitionForm").reset();
+  $("#competitionTemplate").value = "";
   draftPeople = [];
   renderPeopleDraft();
   $("#createCompetitionModal").close();
@@ -1164,11 +1789,51 @@ $("#createTemplateBtn").addEventListener("click", () => {
   render();
 });
 
-$$(".add-phase-task").forEach(button => {
-  button.addEventListener("click", () => addTaskToCompetition(button.dataset.sectionId));
+$("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
+
+$("#showAddTaskPersonBtn").addEventListener("click", () => {
+  const row = $("#taskPersonAddRow");
+  const shouldShow = row.classList.contains("hidden") || row.hidden;
+  row.classList.toggle("hidden", !shouldShow);
+  row.hidden = !shouldShow;
+
+  if (shouldShow) {
+    $("#taskPersonNameInput").focus();
+  }
 });
 
-$("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
+function addPersonFromTaskEditor() {
+  const result = getEditingTask();
+  if (!result) return;
+
+  const { competition, section, task } = result;
+  const originalOrder = section.tasks.map(item => item.id);
+  const input = $("#taskPersonNameInput");
+  const name = formatName(input.value);
+
+  if (!name) return;
+
+  competition.people = uniqueNames([...(competition.people || []), name]);
+  task.responsibles = uniqueNames([...taskResponsibles(task), name]);
+  task.responsible = task.responsibles[0] || "";
+  restoreTaskOrder(section, originalOrder);
+
+  input.value = "";
+  $("#taskPersonAddRow").classList.add("hidden");
+  $("#taskPersonAddRow").hidden = true;
+  saveState();
+  renderResponsibleChoices(competition, task);
+  renderDashboard();
+}
+
+$("#addTaskPersonBtn").addEventListener("click", addPersonFromTaskEditor);
+
+$("#taskPersonNameInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addPersonFromTaskEditor();
+  }
+});
 
 $("#editTaskHasDeadline").addEventListener("change", () => {
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
@@ -1180,8 +1845,9 @@ $("#taskEditForm").addEventListener("submit", event => {
   const result = getEditingTask();
   if (!result) return;
 
-  const { task } = result;
-  const selectedResponsibles = $$("#editTaskResponsibleList input:checked").map(input => input.value);
+  const { section, task } = result;
+  const originalOrder = section.tasks.map(item => item.id);
+  const selectedResponsibles = uniqueNames($$("#editTaskResponsibleList input:checked").map(input => input.value));
 
   task.title = $("#editTaskTitle").value;
   task.responsibles = selectedResponsibles;
@@ -1190,6 +1856,7 @@ $("#taskEditForm").addEventListener("submit", event => {
   task.deadlineDate = task.hasDeadline ? $("#editTaskDeadlineDate").value : "";
   task.deadlineTime = task.hasDeadline ? $("#editTaskDeadlineTime").value : "";
   task.note = $("#editTaskNote").value;
+  restoreTaskOrder(section, originalOrder);
 
   saveState();
   $("#taskEditModal").close();

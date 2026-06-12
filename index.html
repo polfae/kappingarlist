@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kappingarklárt v3.6</title>
+  <title>Kappingarklárt v4.6</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -27,7 +27,7 @@
       <nav class="nav">
         <button class="nav-link active" data-view="dashboard" title="Yvirlit"><span class="nav-icon">⌂</span><span class="nav-text">Yvirlit</span></button>
       </nav>
-      <p class="sidebar-version">Version 3.6</p>
+      <p class="sidebar-version">Version 4.6</p>
 <button id="toggleSidebar" class="collapse-btn" title="Fold menu saman"><span class="when-open">←</span><span class="when-closed">→</span></button>
     </aside>
 
@@ -109,7 +109,14 @@
       <div class="modal-header"><div><p class="eyebrow">Uppgáva</p><h2>Redigera uppgávu</h2></div><button type="button" class="icon-btn" id="closeTaskEditModal">×</button></div>
       <label>Heiti<input id="editTaskTitle" type="text" placeholder="T.d. Finna dómarar" required /></label>
       <div class="responsible-editor">
-        <p class="field-label">Ábyrgd</p>
+        <div class="responsible-editor-heading">
+          <p class="field-label">Ábyrgd</p>
+          <button id="showAddTaskPersonBtn" class="role-add-btn" type="button" title="Legg persón afturat">+</button>
+        </div>
+        <div id="taskPersonAddRow" class="person-input-row hidden" hidden>
+          <input id="taskPersonNameInput" type="text" placeholder="Navn, t.d. Pól" />
+          <button id="addTaskPersonBtn" type="button" class="secondary-btn">Legg afturat</button>
+        </div>
         <div id="editTaskResponsibleList" class="responsible-check-list"></div>
       </div>
       <label class="checkbox-row"><input id="editTaskHasDeadline" type="checkbox" /><span>Legg freist afturat</span></label>
