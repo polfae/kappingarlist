@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v4.7.1";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.8";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -848,6 +848,201 @@ function deleteTemplateWithConfirmation(templateId) {
   render();
 }
 
+
+function pdfEncodeText(value) {
+  const text = String(value ?? "").replace(/\r/g, "");
+  const bytes = [];
+  for (const char of text) {
+    const code = char.codePointAt(0);
+    if (code === 10) {
+      bytes.push(10);
+    } else if (code >= 32 && code <= 255) {
+      bytes.push(code);
+    } else {
+      bytes.push(63);
+    }
+  }
+  return bytes;
+}
+
+function pdfEscapeText(value) {
+  return pdfEncodeText(value)
+    .map(byte => {
+      if (byte === 40 || byte === 41 || byte === 92) return `\\${String.fromCharCode(byte)}`;
+      if (byte === 10) return "\\n";
+      return String.fromCharCode(byte);
+    })
+    .join("");
+}
+
+function pdfTextLine(text, x, y, size = 10, font = "F1") {
+  return `BT /${font} ${size} Tf ${x} ${y} Td (${pdfEscapeText(text)}) Tj ET\n`;
+}
+
+function pdfSlug(value) {
+  return String(value || "checklist")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\u00C0-\u00FF]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "checklist";
+}
+
+function wrapPdfText(text, maxChars) {
+  const words = String(text || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const lines = [];
+  let current = "";
+
+  words.forEach(word => {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  });
+
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
+function buildChecklistPdfContent(competition) {
+  const margin = 44;
+  const pageWidth = 595.28;
+  const pageHeight = 841.89;
+  const bottom = 46;
+  const lineHeight = 14;
+  const pages = [];
+  let y = pageHeight - margin;
+  let content = "";
+
+  const addPage = () => {
+    if (content) pages.push(content);
+    content = "";
+    y = pageHeight - margin;
+  };
+
+  const ensureSpace = (needed) => {
+    if (y - needed < bottom) addPage();
+  };
+
+  const addLine = (text, options = {}) => {
+    const size = options.size || 10;
+    const font = options.font || "F1";
+    const indent = options.indent || 0;
+    const height = options.height || lineHeight;
+    ensureSpace(height);
+    content += pdfTextLine(text, margin + indent, y, size, font);
+    y -= height;
+  };
+
+  const addWrapped = (text, options = {}) => {
+    const maxChars = options.maxChars || 84;
+    const lines = wrapPdfText(text, maxChars);
+    lines.forEach((line, index) => addLine(index === 0 ? line : `  ${line}`, options));
+  };
+
+  content += "q 0.94 0.95 0.97 rg 0 0 595.28 841.89 re f Q\n";
+  addLine("Kappingarklárt", { size: 13, font: "F2", height: 18 });
+  addLine(competition.name || "Ónevnd kapping", { size: 22, font: "F2", height: 28 });
+  addLine(`Dato: ${formatDate(competition.date)}    Stað: ${competition.venue || "Einki stað ásett"}`, { size: 10, height: 18 });
+  addLine(`PDF gjørd: ${new Intl.DateTimeFormat("fo-FO", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}`, { size: 9, height: 24 });
+  content += `q 0.18 0.37 0.62 RG ${margin} ${y + 8} ${pageWidth - margin * 2} 1.2 re f Q\n`;
+  y -= 12;
+
+  (competition.sections || []).forEach(section => {
+    ensureSpace(42);
+    addLine(section.title || "Ónevnd sektion", { size: 15, font: "F2", height: 22 });
+
+    if (!section.tasks || section.tasks.length === 0) {
+      addLine("Eingin uppgáva í hesi sektion.", { size: 9, indent: 14, height: 18 });
+      y -= 4;
+      return;
+    }
+
+    section.tasks.forEach(task => {
+      const responsibles = sortNames(taskResponsibles(task)).join(", ") || "—";
+      const deadline = task.hasDeadline && task.deadlineDate ? formatDeadline(task) : "—";
+      const status = task.done ? "☑" : "☐";
+      const note = task.note ? task.note : "—";
+
+      ensureSpace(78);
+      addWrapped(`${status} ${task.title || "Ónevnd uppgáva"}`, { size: 11, font: "F2", maxChars: 72, height: 15 });
+      addWrapped(`Ábyrgd: ${responsibles}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
+      addWrapped(`Freist: ${deadline}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
+      addWrapped(`Viðmerking: ${note}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
+      y -= 6;
+    });
+
+    y -= 6;
+  });
+
+  if (content) pages.push(content);
+  return { pages, pageWidth, pageHeight };
+}
+
+function createPdfBlobFromPages(pages, pageWidth, pageHeight) {
+  const encoder = new TextEncoder();
+  const objects = [];
+
+  const addObject = (content) => {
+    objects.push(content);
+    return objects.length;
+  };
+
+  const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
+  const pagesId = addObject("");
+  const fontRegularId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+
+  const pageIds = [];
+  pages.forEach(pageContent => {
+    const streamBytes = encoder.encode(pageContent);
+    const streamId = addObject(`<< /Length ${streamBytes.length} >>\nstream\n${pageContent}endstream`);
+    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${streamId} 0 R >>`);
+    pageIds.push(pageId);
+  });
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+
+  objects.forEach((object, index) => {
+    offsets.push(encoder.encode(pdf).length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+
+  const xrefOffset = encoder.encode(pdf).length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  offsets.slice(1).forEach(offset => {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdf], { type: "application/pdf" });
+}
+
+function downloadChecklistPdf() {
+  const competition = state.competitions.find(item => item.id === activeCompetitionId);
+  if (!competition) return;
+
+  const { pages, pageWidth, pageHeight } = buildChecklistPdfContent(competition);
+  const blob = createPdfBlobFromPages(pages, pageWidth, pageHeight);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `kappingarklart-${pdfSlug(competition.name)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function renderChecklist() {
   if (activeView !== "checklist") return;
 
@@ -1671,6 +1866,7 @@ $("#openCreateCompetition").addEventListener("click", () => {
 
 $("#closeCompetitionModal").addEventListener("click", () => $("#createCompetitionModal").close());
 $("#backToDashboard").addEventListener("click", () => setView("dashboard"));
+$("#downloadChecklistPdfBtn").addEventListener("click", downloadChecklistPdf);
 
 $("#addPersonBtn").addEventListener("click", () => {
   const input = $("#personNameInput");

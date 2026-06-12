@@ -1993,3 +1993,35 @@ body {
 #taskPersonAddRow[hidden] {
   display: none !important;
 }
+
+
+/* v4.8 checklist PDF download button */
+.download-pdf-btn {
+  position: absolute;
+  right: clamp(1.15rem, 3vw, 2rem);
+  bottom: clamp(1.15rem, 3vw, 2rem);
+  z-index: 3;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1;
+  backdrop-filter: blur(12px);
+}
+
+.download-pdf-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+@media (max-width: 760px) {
+  .download-pdf-btn {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}

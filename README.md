@@ -1,14 +1,12 @@
-# Kappingarklárt v4.7.1
+# Kappingarklárt v4.8
 
-Small fix from version 4.7.
+Built on the uploaded v4.7.1 files.
 
-Fixes in this version:
+Update in this version:
 
-- The add-person input inside the task editor is fully hidden by default
-- Only the + button is shown until the user clicks it
-- After adding a person, the input row hides again
-- Editing a task no longer changes its position in the section
-- Adding a responsible person, deadline, comment, title change or checkbox change keeps the task in the same spot
-- The only way to move tasks remains drag-and-drop
+- Added a PDF download button inside the checklist header
+- The button is a small down-arrow icon in the bottom-right of the top competition container
+- Clicking it downloads a print-friendly PDF for the active competition
+- The PDF includes sections, task titles, responsible people, deadlines, comments and completion status
 
 Open `index.html` in your browser.
