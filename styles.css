@@ -2131,3 +2131,86 @@ body {
     display: none;
   }
 }
+
+
+/* v4.8.6 sidebar + templates layout polish */
+.sidebar-bottom {
+  margin-top: auto !important;
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: end !important;
+  gap: 0.75rem !important;
+}
+
+.sidebar-version {
+  justify-self: start !important;
+  align-self: end !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+.sidebar-bottom .collapse-btn {
+  justify-self: end !important;
+  align-self: end !important;
+  margin: 0 !important;
+}
+
+.sidebar-collapsed .sidebar-bottom {
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.sidebar-collapsed .sidebar-version {
+  display: none !important;
+}
+
+/* The template list card should wrap its own content, not stretch with the editor */
+.template-layout {
+  align-items: start !important;
+}
+
+.template-layout > .panel:first-child {
+  align-self: start !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.template-layout > .panel:first-child .list {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* More breathing room before the add-task button in every template section */
+.template-section [data-add-task] {
+  margin-top: 2rem !important;
+}
+
+/* Keep template delete x buttons visually plain */
+.template-section .delete-small,
+.template-delete-icon {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 0.15rem 0.35rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--red) !important;
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
+}
+
+.template-section .delete-small:hover,
+.template-delete-icon:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 860px) {
+  .sidebar-bottom {
+    display: none !important;
+  }
+}

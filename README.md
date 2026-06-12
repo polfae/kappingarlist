@@ -1,13 +1,13 @@
-# Kappingarklárt v4.8.5
+# Kappingarklárt v4.8.6
 
-Polish version from 4.8.4.
+Polish version from 4.8.5.
 
 Updates in this version:
 
-- Removed the circular button styling around the template delete x icons
-- Added more spacing above “+ Legg uppgávu afturat” in template sections
-- Made the templates list panel only as tall as its own content
-- Moved the sidebar version text to the bottom beside the collapse button
-- Hidden the version text when the sidebar is collapsed or on mobile
+- Version text is positioned at the bottom-left of the sidebar
+- Collapse arrow is positioned at the bottom-right of the sidebar
+- Added more space above “+ Legg uppgávu afturat” in template sections
+- The templates list card now wraps only the template list content instead of stretching down with the editor
+- Template delete x buttons remain visually plain
 
 Open `index.html` in your browser.
