@@ -2049,3 +2049,9 @@ body {
 .download-pdf-btn:hover {
   transform: none !important;
 }
+
+
+/* v4.8.2 task editor bug fixes */
+#editTaskDeadlineTime::placeholder {
+  color: var(--muted);
+}

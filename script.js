@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v4.8.1";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.8.2";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8.1", "kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -281,8 +281,54 @@ function formatDate(value) {
 function formatDeadline(task) {
   if (!task.deadlineDate) return "";
   const dateText = formatDate(task.deadlineDate);
-  return task.deadlineTime ? `${dateText} kl. ${task.deadlineTime}` : dateText;
+  const timeText = normalizeTimeValue(task.deadlineTime);
+  return timeText ? `${dateText} kl. ${timeText}` : dateText;
 }
+
+
+function normalizeTimeValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const digitsOnly = raw.replace(/[^\d]/g, "");
+  let hours = "";
+  let minutes = "";
+
+  if (/^\d{1,2}:\d{1,2}$/.test(raw)) {
+    const parts = raw.split(":");
+    hours = parts[0];
+    minutes = parts[1];
+  } else if (digitsOnly.length === 3) {
+    hours = digitsOnly.slice(0, 1);
+    minutes = digitsOnly.slice(1);
+  } else if (digitsOnly.length >= 4) {
+    hours = digitsOnly.slice(0, 2);
+    minutes = digitsOnly.slice(2, 4);
+  } else {
+    return "";
+  }
+
+  const hourNumber = Number(hours);
+  const minuteNumber = Number(minutes);
+
+  if (!Number.isInteger(hourNumber) || !Number.isInteger(minuteNumber)) return "";
+  if (hourNumber < 0 || hourNumber > 23 || minuteNumber < 0 || minuteNumber > 59) return "";
+
+  return `${String(hourNumber).padStart(2, "0")}:${String(minuteNumber).padStart(2, "0")}`;
+}
+
+function keepTimeInputReadable(input) {
+  const digits = input.value.replace(/[^\d]/g, "").slice(0, 4);
+
+  if (digits.length <= 2) {
+    input.value = digits;
+    return;
+  }
+
+  input.value = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+
 
 function getPersonColor(competition, person) {
   const index = (competition.people || []).indexOf(person);
@@ -1653,8 +1699,13 @@ function renderResponsibleChoices(competition, task) {
 
 function openTaskEditor(competitionId, sectionId, taskId) {
   const competition = state.competitions.find(item => item.id === competitionId);
-  const section = competition.sections.find(item => item.id === sectionId);
-  const task = section.tasks.find(item => item.id === taskId);
+  if (!competition) return;
+
+  const section = (competition.sections || []).find(item => item.id === sectionId);
+  if (!section) return;
+
+  const task = (section.tasks || []).find(item => item.id === taskId);
+  if (!task) return;
 
   editingTask = { competitionId, sectionId, taskId };
 
@@ -1662,7 +1713,7 @@ function openTaskEditor(competitionId, sectionId, taskId) {
   $("#editTaskNote").value = task.note || "";
   $("#editTaskHasDeadline").checked = Boolean(task.hasDeadline);
   $("#editTaskDeadlineDate").value = task.deadlineDate || "";
-  $("#editTaskDeadlineTime").value = task.deadlineTime || "";
+  $("#editTaskDeadlineTime").value = normalizeTimeValue(task.deadlineTime) || "";
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
 
   $("#taskPersonAddRow").classList.add("hidden");
@@ -1674,9 +1725,16 @@ function openTaskEditor(competitionId, sectionId, taskId) {
 
 function getEditingTask() {
   if (!editingTask) return null;
+
   const competition = state.competitions.find(item => item.id === editingTask.competitionId);
-  const section = competition.sections.find(item => item.id === editingTask.sectionId);
-  const task = section.tasks.find(item => item.id === editingTask.taskId);
+  if (!competition) return null;
+
+  const section = (competition.sections || []).find(item => item.id === editingTask.sectionId);
+  if (!section) return null;
+
+  const task = (section.tasks || []).find(item => item.id === editingTask.taskId);
+  if (!task) return null;
+
   return { competition, section, task };
 }
 
@@ -1684,14 +1742,17 @@ function addTaskToCompetition(sectionId) {
   const competition = state.competitions.find(item => item.id === activeCompetitionId);
   if (!competition) return;
 
-  const section = competition.sections.find(item => item.id === sectionId);
+  const section = (competition.sections || []).find(item => item.id === sectionId);
   if (!section) return;
+
+  const preselectedResponsibles = uniqueNames(activeResponsibleFilters)
+    .filter(person => (competition.people || []).includes(person));
 
   const task = {
     id: makeId(),
     title: "Nýggj uppgáva",
-    responsible: "",
-    responsibles: [],
+    responsible: preselectedResponsibles[0] || "",
+    responsibles: preselectedResponsibles,
     hasDeadline: false,
     deadlineDate: "",
     deadlineTime: "",
@@ -1701,7 +1762,7 @@ function addTaskToCompetition(sectionId) {
 
   section.tasks.push(task);
   saveState();
-  renderChecklist();
+  renderDashboard();
   openTaskEditor(competition.id, section.id, task.id);
 }
 
@@ -1997,7 +2058,11 @@ $("#createTemplateBtn").addEventListener("click", () => {
   render();
 });
 
-$("#closeTaskEditModal").addEventListener("click", () => $("#taskEditModal").close());
+$("#closeTaskEditModal").addEventListener("click", () => {
+  $("#taskEditModal").close();
+  renderDashboard();
+  renderChecklist();
+});
 
 $("#showAddTaskPersonBtn").addEventListener("click", () => {
   const row = $("#taskPersonAddRow");
@@ -2047,6 +2112,14 @@ $("#editTaskHasDeadline").addEventListener("change", () => {
   $("#deadlineFields").classList.toggle("hidden", !$("#editTaskHasDeadline").checked);
 });
 
+$("#editTaskDeadlineTime").addEventListener("input", event => {
+  keepTimeInputReadable(event.target);
+});
+
+$("#editTaskDeadlineTime").addEventListener("blur", event => {
+  event.target.value = normalizeTimeValue(event.target.value);
+});
+
 $("#taskEditForm").addEventListener("submit", event => {
   event.preventDefault();
 
@@ -2062,7 +2135,7 @@ $("#taskEditForm").addEventListener("submit", event => {
   task.responsible = selectedResponsibles[0] || "";
   task.hasDeadline = $("#editTaskHasDeadline").checked;
   task.deadlineDate = task.hasDeadline ? $("#editTaskDeadlineDate").value : "";
-  task.deadlineTime = task.hasDeadline ? $("#editTaskDeadlineTime").value : "";
+  task.deadlineTime = task.hasDeadline ? normalizeTimeValue($("#editTaskDeadlineTime").value) : "";
   task.note = $("#editTaskNote").value;
   restoreTaskOrder(section, originalOrder);
 
