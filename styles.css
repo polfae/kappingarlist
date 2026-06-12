@@ -2055,3 +2055,79 @@ body {
 #editTaskDeadlineTime::placeholder {
   color: var(--muted);
 }
+
+
+/* v4.8.5 template page polish */
+.template-layout {
+  align-items: start;
+}
+
+.template-layout > .panel:first-child {
+  align-self: start;
+}
+
+.template-section .delete-small,
+.template-delete-icon {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 0.15rem 0.35rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--red) !important;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.template-section .delete-small:hover,
+.template-delete-icon:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.template-section [data-add-task] {
+  margin-top: 1.35rem;
+}
+
+/* v4.8.5 sidebar version placement */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sidebar-version {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.sidebar-bottom .collapse-btn {
+  flex: 0 0 auto;
+}
+
+.sidebar-collapsed .sidebar-version {
+  display: none;
+}
+
+.sidebar-collapsed .sidebar-bottom {
+  justify-content: center;
+}
+
+@media (max-width: 860px) {
+  .sidebar-bottom {
+    display: none;
+  }
+}
