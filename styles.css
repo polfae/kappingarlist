@@ -2025,3 +2025,27 @@ body {
     bottom: 1rem;
   }
 }
+
+
+/* v4.8.1 PDF button placement fix */
+.checklist-header {
+  position: relative !important;
+}
+
+.download-pdf-btn {
+  position: absolute !important;
+  inset-block-start: auto !important;
+  top: auto !important;
+  left: auto !important;
+  inset-inline-start: auto !important;
+  right: clamp(1.15rem, 3vw, 2rem) !important;
+  bottom: clamp(1.15rem, 3vw, 2rem) !important;
+  margin: 0 !important;
+  transform: none !important;
+  z-index: 20 !important;
+  cursor: pointer;
+}
+
+.download-pdf-btn:hover {
+  transform: none !important;
+}

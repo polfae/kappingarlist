@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v4.8";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.8.1";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -397,7 +397,6 @@ function renderTemplateList() {
   templateList.innerHTML = "";
 
   if (state.templates.length === 0) {
-    templateList.innerHTML = `<div class="empty-list-message">Ongir templates enn.</div>`;
     return;
   }
 
@@ -741,7 +740,6 @@ function renderCompetitionSelect() {
   competitionTemplate.appendChild(noTemplateOption);
 
   if (state.templates.length === 0) {
-    templateList.innerHTML = `<div class="empty-list-message">Ongir templates enn.</div>`;
     return;
   }
 
@@ -982,7 +980,7 @@ function buildChecklistPdfContent(competition) {
   return { pages, pageWidth, pageHeight };
 }
 
-function createPdfBlobFromPages(pages, pageWidth, pageHeight) {
+function createPdfStringFromPages(pages, pageWidth, pageHeight) {
   const encoder = new TextEncoder();
   const objects = [];
 
@@ -1022,25 +1020,39 @@ function createPdfBlobFromPages(pages, pageWidth, pageHeight) {
   });
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
 
-  return new Blob([pdf], { type: "application/pdf" });
+  return pdf;
 }
 
-function downloadChecklistPdf() {
+function downloadChecklistPdf(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
   const competition = state.competitions.find(item => item.id === activeCompetitionId);
   if (!competition) return;
 
   const { pages, pageWidth, pageHeight } = buildChecklistPdfContent(competition);
-  const blob = createPdfBlobFromPages(pages, pageWidth, pageHeight);
-  const url = URL.createObjectURL(blob);
+  const pdf = createPdfStringFromPages(pages, pageWidth, pageHeight);
+  const filename = `kappingarklart-${pdfSlug(competition.name)}.pdf`;
   const link = document.createElement("a");
 
-  link.href = url;
-  link.download = `kappingarklart-${pdfSlug(competition.name)}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try {
+    link.href = `data:application/pdf;base64,${btoa(pdf)}`;
+    link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 function renderChecklist() {
@@ -1866,7 +1878,7 @@ $("#openCreateCompetition").addEventListener("click", () => {
 
 $("#closeCompetitionModal").addEventListener("click", () => $("#createCompetitionModal").close());
 $("#backToDashboard").addEventListener("click", () => setView("dashboard"));
-$("#downloadChecklistPdfBtn").addEventListener("click", downloadChecklistPdf);
+$("#downloadChecklistPdfBtn")?.addEventListener("click", downloadChecklistPdf);
 
 $("#addPersonBtn").addEventListener("click", () => {
   const input = $("#personNameInput");

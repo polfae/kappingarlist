@@ -1,12 +1,13 @@
-# Kappingarklárt v4.8
+# Kappingarklárt v4.8.1
 
-Built on the uploaded v4.7.1 files.
+Small fix from version 4.8.
 
-Update in this version:
+Fixes in this version:
 
-- Added a PDF download button inside the checklist header
-- The button is a small down-arrow icon in the bottom-right of the top competition container
-- Clicking it downloads a print-friendly PDF for the active competition
-- The PDF includes sections, task titles, responsible people, deadlines, comments and completion status
+- PDF download button is forced to the bottom-right of the checklist header
+- Clicking the button now generates and downloads a print-friendly PDF more reliably
+- Fixed an empty-template JavaScript issue that could interfere with app behavior
+- PDF includes all sections and tasks for the active competition
+- PDF includes task title, responsible people, deadline, comment and completion status
 
 Open `index.html` in your browser.
