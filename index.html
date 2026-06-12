@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kappingarklárt v4.8.6</title>
+  <title>Kappingarklárt v4.9.6</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -20,7 +20,7 @@
     <aside class="sidebar">
       <div class="sidebar-top">
         <div class="brand">
-          <div class="brand-mark">K</div>
+          <img class="brand-logo" src="assets/stoyt-logo.png" alt="Stoyt" />
           <div class="brand-text"><p class="eyebrow">Stoyt</p><h1>Kappingarklárt</h1></div>
         </div>
       </div>
@@ -28,7 +28,7 @@
         <button class="nav-link active" data-view="dashboard" title="Yvirlit"><span class="nav-icon">⌂</span><span class="nav-text">Yvirlit</span></button>
       </nav>
       <div class="sidebar-bottom">
-        <p class="sidebar-version">Version 4.8.6</p>
+        <p class="sidebar-version">Version 4.9.6</p>
         <button id="toggleSidebar" class="collapse-btn" title="Fold menu saman"><span class="when-open">←</span><span class="when-closed">→</span></button>
       </div>
     </aside>
@@ -89,7 +89,7 @@
       <div class="form-grid"><label>Kappingarnavn<input id="competitionName" type="text" placeholder="T.d. Skansi Cup 2026" required /></label><label>Dato<input id="competitionDate" type="date" required /></label></div>
       <label>Stað<input id="competitionVenue" type="text" placeholder="T.d. Tvørmegi" /></label>
       <label>Template<select id="competitionTemplate"></select></label>
-      <div class="people-box"><div><h3>Ábyrgdarpersónar til uppgávur</h3><p>Legg fólk afturat, sum kunnu veljast sum ábyrgdarpersónar á checklist-uppgávum. Hvør persónur fær sín egna lit.</p></div><div class="person-input-row"><input id="personNameInput" type="text" placeholder="Navn, t.d. Pól" /><button id="addPersonBtn" type="button" class="secondary-btn">Legg afturat</button></div><div id="personList" class="person-list"></div></div>
+      <div class="people-box create-people-box-hidden" hidden><div><h3>Ábyrgdarpersónar til uppgávur</h3><p>Legg fólk afturat, sum kunnu veljast sum ábyrgdarpersónar á checklist-uppgávum. Hvør persónur fær sín egna lit.</p></div><div class="person-input-row"><input id="personNameInput" type="text" placeholder="Navn, t.d. Pól" /><button id="addPersonBtn" type="button" class="secondary-btn">Legg afturat</button></div><div id="personList" class="person-list"></div></div>
       <label>Atgongdarloyniorð<input id="competitionPassword" type="text" placeholder="T.d. stoyt2026" /></label>
       <button class="primary-btn full-width" type="submit">Stovna kapping</button>
     </form>

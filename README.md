@@ -1,13 +1,11 @@
-# Kappingarklárt v4.8.6
+# Kappingarklárt v4.9.6
 
-Polish version from 4.8.5.
+Template selection color update from 4.9.5.
 
 Updates in this version:
 
-- Version text is positioned at the bottom-left of the sidebar
-- Collapse arrow is positioned at the bottom-right of the sidebar
-- Added more space above “+ Legg uppgávu afturat” in template sections
-- The templates list card now wraps only the template list content instead of stretching down with the editor
-- Template delete x buttons remain visually plain
+- Selected template now uses a stronger blue color similar to the main menu/sidebar
+- Kept the template column alignment from v4.9.5
+- Kept all previous PDF/filter and layout functionality
 
 Open `index.html` in your browser.

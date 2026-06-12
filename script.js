@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v4.8.6";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8.5", "kappingarklart-v4.8.4", "kappingarklart-v4.8.3", "kappingarklart-v4.8.2", "kappingarklart-v4.8.1", "kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.9.6";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.9.5", "kappingarklart-v4.9.4", "kappingarklart-v4.9.3", "kappingarklart-v4.9.2", "kappingarklart-v4.9.1", "kappingarklart-v4.9.0", "kappingarklart-v4.8.9", "kappingarklart-v4.8.8", "kappingarklart-v4.8.7", "kappingarklart-v4.8.6", "kappingarklart-v4.8.5", "kappingarklart-v4.8.4", "kappingarklart-v4.8.3", "kappingarklart-v4.8.2", "kappingarklart-v4.8.1", "kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -951,12 +951,26 @@ function wrapPdfText(text, maxChars) {
   return lines.length ? lines : [""];
 }
 
+function getVisibleChecklistSectionsForPdf(competition) {
+  const filteringTasks =
+    showIncompleteOnly ||
+    activeResponsibleFilters.length > 0;
+
+  return (competition.sections || [])
+    .filter(sectionMatchesFilter)
+    .map(section => ({
+      ...section,
+      tasks: (section.tasks || []).filter(taskMatchesFilters)
+    }))
+    .filter(section => !(filteringTasks && section.tasks.length === 0));
+}
+
 function buildChecklistPdfContent(competition) {
   const margin = 44;
   const pageWidth = 595.28;
   const pageHeight = 841.89;
-  const bottom = 46;
-  const lineHeight = 14;
+  const bottom = 62;
+  const usableWidth = pageWidth - margin * 2;
   const pages = [];
   let y = pageHeight - margin;
   let content = "";
@@ -971,55 +985,108 @@ function buildChecklistPdfContent(competition) {
     if (y - needed < bottom) addPage();
   };
 
+  const addText = (text, x, yPos, size = 10, font = "F1") => {
+    content += pdfTextLine(text, x, yPos, size, font);
+  };
+
   const addLine = (text, options = {}) => {
     const size = options.size || 10;
     const font = options.font || "F1";
     const indent = options.indent || 0;
-    const height = options.height || lineHeight;
+    const height = options.height || 14;
     ensureSpace(height);
-    content += pdfTextLine(text, margin + indent, y, size, font);
+    addText(text, margin + indent, y, size, font);
     y -= height;
   };
 
-  const addWrapped = (text, options = {}) => {
-    const maxChars = options.maxChars || 84;
-    const lines = wrapPdfText(text, maxChars);
-    lines.forEach((line, index) => addLine(index === 0 ? line : `  ${line}`, options));
+  const wrappedLines = (text, maxChars) => wrapPdfText(text, maxChars).filter(line => line.trim() !== "");
+
+  const addSectionHeading = (title) => {
+    ensureSpace(54);
+    content += `q 0.92 0.95 0.98 rg ${margin} ${y - 20} ${usableWidth} 27 re f Q\n`;
+    content += `q 0.18 0.37 0.62 rg ${margin} ${y - 20} 4 27 re f Q\n`;
+    addText(title || "Ónevnd sektion", margin + 13, y - 7, 13, "F2");
+    y -= 43;
   };
 
-  content += "q 0.94 0.95 0.97 rg 0 0 595.28 841.89 re f Q\n";
-  addLine("Kappingarklárt", { size: 13, font: "F2", height: 18 });
-  addLine(competition.name || "Ónevnd kapping", { size: 22, font: "F2", height: 28 });
-  addLine(`Dato: ${formatDate(competition.date)}    Stað: ${competition.venue || "Einki stað ásett"}`, { size: 10, height: 18 });
-  addLine(`PDF gjørd: ${new Intl.DateTimeFormat("fo-FO", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}`, { size: 9, height: 24 });
-  content += `q 0.18 0.37 0.62 RG ${margin} ${y + 8} ${pageWidth - margin * 2} 1.2 re f Q\n`;
-  y -= 12;
+  const addTaskBlock = (task) => {
+    const responsibles = sortNames(taskResponsibles(task)).join(", ") || "-";
+    const deadline = task.hasDeadline && task.deadlineDate ? formatDeadline(task) : "-";
+    const note = task.note ? task.note : "-";
+    const title = task.title || "Ónevnd uppgáva";
 
-  (competition.sections || []).forEach(section => {
-    ensureSpace(42);
-    addLine(section.title || "Ónevnd sektion", { size: 15, font: "F2", height: 22 });
+    const titleLines = wrappedLines(title, 70);
+    const responsibleLines = wrappedLines(`Ábyrgd: ${responsibles}`, 80);
+    const deadlineLines = wrappedLines(`Freist: ${deadline}`, 80);
+    const noteLines = wrappedLines(`Viðmerking: ${note}`, 80);
+
+    const titleHeight = titleLines.length * 14;
+    const detailHeight = (responsibleLines.length + deadlineLines.length + noteLines.length) * 12;
+    const blockHeight = Math.max(64, 23 + titleHeight + 5 + detailHeight + 11);
+
+    ensureSpace(blockHeight + 12);
+
+    content += `q 1 1 1 rg ${margin} ${y - blockHeight} ${usableWidth} ${blockHeight} re f Q\n`;
+    content += `q 0.90 0.90 0.90 RG ${margin} ${y - blockHeight} ${usableWidth} ${blockHeight} re S Q\n`;
+
+    let textY = y - 20;
+
+    titleLines.forEach((line, index) => {
+      addText(line, margin + 16 + (index > 0 ? 14 : 0), textY, 11, "F2");
+      textY -= 14;
+    });
+
+    textY -= 3;
+
+    responsibleLines.forEach((line, index) => {
+      addText(line, margin + 30 + (index > 0 ? 12 : 0), textY, 9, "F1");
+      textY -= 12;
+    });
+
+    deadlineLines.forEach((line, index) => {
+      addText(line, margin + 30 + (index > 0 ? 12 : 0), textY, 9, "F1");
+      textY -= 12;
+    });
+
+    noteLines.forEach((line, index) => {
+      addText(line, margin + 30 + (index > 0 ? 12 : 0), textY, 9, "F1");
+      textY -= 12;
+    });
+
+    y -= blockHeight + 12;
+  };
+
+  const addHeader = () => {
+    content += "q 0.97 0.98 0.99 rg 0 0 595.28 841.89 re f Q\n";
+    addLine(competition.name || "Ónevnd kapping", { size: 26, font: "F2", height: 42 });
+    y -= 4;
+    addLine(`Dato: ${formatDate(competition.date)}`, { size: 10, height: 14 });
+    addLine(`Stað: ${competition.venue || "Einki stað ásett"}`, { size: 10, height: 14 });
+    addLine(`PDF gjørd: ${new Intl.DateTimeFormat("fo-FO", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}`, { size: 9, height: 18 });
+    content += `q 0.18 0.37 0.62 rg ${margin} ${y + 4} ${usableWidth} 1.2 re f Q\n`;
+    y -= 24;
+  };
+
+  addHeader();
+
+  const visibleSections = getVisibleChecklistSectionsForPdf(competition);
+
+  if (visibleSections.length === 0) {
+    addLine("Eingin uppgáva er sjónlig við valdu filtrunum.", { size: 11, font: "F2", height: 20 });
+  }
+
+  visibleSections.forEach((section, sectionIndex) => {
+    if (sectionIndex > 0) y -= 12;
+    addSectionHeading(section.title || "Ónevnd sektion");
 
     if (!section.tasks || section.tasks.length === 0) {
-      addLine("Eingin uppgáva í hesi sektion.", { size: 9, indent: 14, height: 18 });
-      y -= 4;
+      addLine("Eingin uppgáva í hesi sektion.", { size: 9, indent: 14, height: 20 });
+      y -= 5;
       return;
     }
 
-    section.tasks.forEach(task => {
-      const responsibles = sortNames(taskResponsibles(task)).join(", ") || "—";
-      const deadline = task.hasDeadline && task.deadlineDate ? formatDeadline(task) : "—";
-      const status = task.done ? "☑" : "☐";
-      const note = task.note ? task.note : "—";
-
-      ensureSpace(78);
-      addWrapped(`${status} ${task.title || "Ónevnd uppgáva"}`, { size: 11, font: "F2", maxChars: 72, height: 15 });
-      addWrapped(`Ábyrgd: ${responsibles}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
-      addWrapped(`Freist: ${deadline}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
-      addWrapped(`Viðmerking: ${note}`, { size: 9, indent: 20, maxChars: 86, height: 13 });
-      y -= 6;
-    });
-
-    y -= 6;
+    section.tasks.forEach(addTaskBlock);
+    y -= 4;
   });
 
   if (content) pages.push(content);
@@ -1027,7 +1094,6 @@ function buildChecklistPdfContent(competition) {
 }
 
 function createPdfStringFromPages(pages, pageWidth, pageHeight) {
-  const encoder = new TextEncoder();
   const objects = [];
 
   const addObject = (content) => {
@@ -1041,9 +1107,11 @@ function createPdfStringFromPages(pages, pageWidth, pageHeight) {
   const fontBoldId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
 
   const pageIds = [];
-  pages.forEach(pageContent => {
-    const streamBytes = encoder.encode(pageContent);
-    const streamId = addObject(`<< /Length ${streamBytes.length} >>\nstream\n${pageContent}endstream`);
+  pages.forEach((pageContent, index) => {
+    const pageNumber = index + 1;
+    const footer = pdfTextLine(`Síða ${pageNumber} av ${pages.length}`, pageWidth - 104, 28, 8, "F1");
+    const fullPageContent = `${pageContent}q 0.72 0.72 0.72 rg 44 42 ${pageWidth - 88} 0.8 re f Q\n${footer}`;
+    const streamId = addObject(`<< /Length ${fullPageContent.length} >>\nstream\n${fullPageContent}endstream`);
     const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${streamId} 0 R >>`);
     pageIds.push(pageId);
   });
@@ -1054,11 +1122,11 @@ function createPdfStringFromPages(pages, pageWidth, pageHeight) {
   const offsets = [0];
 
   objects.forEach((object, index) => {
-    offsets.push(encoder.encode(pdf).length);
+    offsets.push(pdf.length);
     pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
   });
 
-  const xrefOffset = encoder.encode(pdf).length;
+  const xrefOffset = pdf.length;
   pdf += `xref\n0 ${objects.length + 1}\n`;
   pdf += "0000000000 65535 f \n";
   offsets.slice(1).forEach(offset => {
@@ -2042,7 +2110,7 @@ $("#competitionForm").addEventListener("submit", event => {
     date: $("#competitionDate").value,
     venue: $("#competitionVenue").value,
     password: $("#competitionPassword").value,
-    people: uniqueNames(draftPeople),
+    people: [],
     roles: makeEmptyRoles(),
     sections: selectedTemplate ? cloneSections(selectedTemplate.sections) : []
   };
