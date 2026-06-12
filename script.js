@@ -1,5 +1,5 @@
-const STORAGE_KEY = "kappingarklart-v4.8.3";
-const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8.2", "kappingarklart-v4.8.1", "kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
+const STORAGE_KEY = "kappingarklart-v4.8.4";
+const PREVIOUS_STORAGE_KEYS = ["kappingarklart-v4.8.3", "kappingarklart-v4.8.2", "kappingarklart-v4.8.1", "kappingarklart-v4.8", "kappingarklart-v4.7.1", "kappingarklart-v4.7", "kappingarklart-v4.6", "kappingarklart-v4.5.2", "kappingarklart-v4.5.1", "kappingarklart-v4.5", "kappingarklart-v4.4.2", "kappingarklart-v4.4.1", "kappingarklart-v4.4", "kappingarklart-v4.3", "kappingarklart-v4.2", "kappingarklart-v4.1", "kappingarklart-v4.0", "kappingarklart-v3.9", "kappingarklart-v3.8", "kappingarklart-v3.7.1", "kappingarklart-v3.7", "kappingarklart-v3.6", "kappingarklart-v3.5", "kappingarklart-v3.4"];
 
 const PERSON_COLORS = [
   { border: "#2563eb", bg: "#dbeafe", text: "#1e3a8a" },
@@ -1264,7 +1264,7 @@ function renderChecklistSections(competition) {
           <button class="delete-section-btn" data-delete-section="${section.id}" type="button" title="Strika sektion">×</button>
         </div>
         <div class="task-list" data-task-drop-section="${section.id}"></div>
-        <button class="add-phase-task secondary-btn" data-section-id="${section.id}" type="button">+ Legg uppgávu afturat</button>
+        <button class="add-phase-task secondary-btn" data-add-competition-task="${section.id}" type="button">+ Legg uppgávu afturat</button>
       `;
 
       const taskList = sectionElement.querySelector(".task-list");
@@ -1298,11 +1298,6 @@ function renderChecklistSections(competition) {
 
       sectionElement.querySelector("[data-delete-section]").addEventListener("click", () => {
         deleteCompetitionSection(section.id);
-      });
-
-      sectionElement.querySelector(".add-phase-task[data-section-id]").addEventListener("click", event => {
-        event.stopPropagation();
-        addTaskToCompetition(section.id);
       });
 
       container.appendChild(sectionElement);
@@ -1614,6 +1609,10 @@ function renderTaskCard(competition, sectionId, task) {
   `;
 
   card.addEventListener("click", event => {
+    if (event.target.closest("button, input, select, textarea, label")) {
+      return;
+    }
+
     if (suppressTaskClick) {
       event.preventDefault();
       return;
@@ -1710,6 +1709,14 @@ function openTaskEditor(competitionId, sectionId, taskId) {
 
   editingTask = { competitionId, sectionId, taskId };
 
+  const taskForm = $("#taskEditForm");
+  taskForm.reset();
+
+  const taskModal = $("#taskEditModal");
+  if (taskModal.open) {
+    taskModal.close();
+  }
+
   $("#editTaskTitle").value = task.title;
   $("#editTaskNote").value = task.note || "";
   $("#editTaskHasDeadline").checked = Boolean(task.hasDeadline);
@@ -1721,7 +1728,7 @@ function openTaskEditor(competitionId, sectionId, taskId) {
   $("#taskPersonAddRow").hidden = true;
   $("#taskPersonNameInput").value = "";
   renderResponsibleChoices(competition, task);
-  $("#taskEditModal").showModal();
+  taskModal.showModal();
 }
 
 function getEditingTask() {
@@ -1763,8 +1770,15 @@ function addTaskToCompetition(sectionId) {
 
   section.tasks.push(task);
   saveState();
+
+  // Re-render immediately so the new task exists visually and the add button remains active.
   renderDashboard();
-  openTaskEditor(competition.id, section.id, task.id);
+  renderChecklist();
+
+  // Open after the render cycle so repeated additions always target the newly created task.
+  requestAnimationFrame(() => {
+    openTaskEditor(competition.id, section.id, task.id);
+  });
 }
 
 function openRolesEditor() {
@@ -1942,6 +1956,15 @@ $("#closeCompetitionModal").addEventListener("click", () => $("#createCompetitio
 $("#backToDashboard").addEventListener("click", () => setView("dashboard"));
 $("#downloadChecklistPdfBtn")?.addEventListener("click", downloadChecklistPdf);
 
+$("#checklistColumns").addEventListener("click", event => {
+  const addTaskButton = event.target.closest("[data-add-competition-task]");
+  if (!addTaskButton || !$("#checklistColumns").contains(addTaskButton)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  addTaskToCompetition(addTaskButton.dataset.addCompetitionTask);
+});
+
 $("#addPersonBtn").addEventListener("click", () => {
   const input = $("#personNameInput");
   const name = formatName(input.value);
@@ -2061,6 +2084,7 @@ $("#createTemplateBtn").addEventListener("click", () => {
 
 $("#closeTaskEditModal").addEventListener("click", () => {
   $("#taskEditModal").close();
+  editingTask = null;
   renderDashboard();
   renderChecklist();
 });
@@ -2142,6 +2166,7 @@ $("#taskEditForm").addEventListener("submit", event => {
 
   saveState();
   $("#taskEditModal").close();
+  editingTask = null;
   renderDashboard();
   renderChecklist();
 });
@@ -2152,6 +2177,7 @@ $("#deleteTaskBtn").addEventListener("click", () => {
 
   deleteTaskWithConfirmation(result.competition.id, editingTask.sectionId, editingTask.taskId);
   $("#taskEditModal").close();
+  editingTask = null;
 });
 
 $("#toggleRolesBtn").addEventListener("click", () => {
